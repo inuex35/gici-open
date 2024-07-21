@@ -12,6 +12,7 @@
 #include "gici/gnss/gnss_types.h"
 #include "gici/gnss/ambiguity_resolution.h"
 #include "gici/gnss/gnss_common.h"
+#include "gici/gnss/wheel_velocity_error.h"  // Include the wheel velocity error header
 
 namespace gici {
 
@@ -100,6 +101,13 @@ public:
 
   // Check if we have velocity estimate
   inline bool hasVelocityEstimate() { return has_velocity_estimate_; }
+
+  // Add TDCP residual blocks to graph
+  void addTdcpResidualBlocks(
+    const GnssMeasurement& measurement1,
+    const GnssMeasurement& measurement2,
+    const State& state1,
+    const State& state2);
 
 protected: 
   // Add GNSS position block to graph

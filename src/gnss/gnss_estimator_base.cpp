@@ -12,6 +12,7 @@
 #include "gici/gnss/gnss_const_errors.h"
 #include "gici/gnss/pseudorange_error.h"
 #include "gici/gnss/phaserange_error.h"
+#include "gici/gnss/tdcp_error.h"
 #include "gici/gnss/doppler_error.h"
 #include "gici/gnss/gnss_relative_errors.h"
 #include "gici/gnss/relative_isb_error.h"
@@ -926,6 +927,58 @@ void GnssEstimatorBase::addPhaserangeResidualBlocks(
     }
   }
 }
+
+void GnssEstimatorBase::addTdcpResidualBlocks(
+    const GnssMeasurement& measurement1,
+    const GnssMeasurement& measurement2,
+    const State& state1,
+    const State& state2) {
+
+  for (const auto& sat : measurement1.satellites) {
+    const auto& prn = sat.first;
+    if (measurement2.satellites.find(prn) == measurement2.satellites.end()) {
+      continue;  // PRN not found in both measurements
+    }
+
+    const auto& satellite1 = sat.second;
+    const auto& satellite2 = measurement2.satellites.at(prn);
+
+    if (satellite1.observations.empty() || satellite2.observations.empty()) {
+      continue;
+    }
+
+    double phase1 = 0.0;
+    double phase2 = 0.0;
+
+    for (const auto& obs : satellite1.observations) {
+      phase1 = obs.second.phaserange;
+    }
+
+    for (const auto& obs : satellite2.observations) {
+      phase2 = obs.second.phaserange;
+    }
+
+    if (phase1 == 0.0 || phase2 == 0.0) {
+      continue;  // Invalid phase range measurements
+    }
+
+    double delta_time = measurement2.timestamp - measurement1.timestamp;
+
+    std::shared_ptr<TDCPError<3, 3, 1, 1>> tdcp_error =
+        std::make_shared<TDCPError<3, 3, 1, 1>>(phase1, phase2, delta_time);
+
+    char system = satellite1.getSystem();
+    BackendId clock_id1 = createGnssClockId(system, measurement1.id);
+    BackendId clock_id2 = createGnssClockId(system, measurement2.id);
+
+    graph_->addResidualBlock(tdcp_error, nullptr,
+                             graph_->parameterBlockPtr(state1.id.asInteger()),
+                             graph_->parameterBlockPtr(state2.id.asInteger()),
+                             graph_->parameterBlockPtr(clock_id1.asInteger()),
+                             graph_->parameterBlockPtr(clock_id2.asInteger()));
+  }
+}
+
 
 // Add doppler residual blocks to graph
 void GnssEstimatorBase::addDopplerResidualBlocks(
@@ -2163,6 +2216,7 @@ void GnssEstimatorBase::addGnssResidualMarginBlocks(const State& state)
     static_cast<int>(ErrorType::kPhaserangeError),
     static_cast<int>(ErrorType::kPhaserangeErrorSD),
     static_cast<int>(ErrorType::kPhaserangeErrorDD),
+    static_cast<int>(ErrorType::kTDCPError),
     static_cast<int>(ErrorType::kDopplerError),
     static_cast<int>(ErrorType::kAmbiguityError),
     static_cast<int>(ErrorType::kClockError),
