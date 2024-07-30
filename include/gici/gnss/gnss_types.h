@@ -65,7 +65,6 @@ struct Observation {
   double wavelength;
   double pseudorange;
   double phaserange;
-  double tdcp;
   double doppler; // in m/s
   double SNR; // Sigal-to-Noise Ratio
   uint8_t LLI; // Loss of Lock Indicator
@@ -289,7 +288,7 @@ struct GnssErrorParameter {
   // Error factor a/b/c according to RTKLIB
   std::vector<double> phase_error_factor{0.003, 0.003, 0.0};
 
-  // Doppler error factor (m/s)
+  // tdcp error factor (m/s)
   double tdcp_error_factor = 0.2;
 
   // Doppler error factor (m/s)

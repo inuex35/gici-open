@@ -712,7 +712,7 @@ std::shared_ptr<ParameterBlock> Graph::parameterBlockPtr(
 {
   // get a parameterBlock
   CHECK(parameterBlockExists(parameter_block_id))
-      << "parameterBlock with id " << BackendId(parameter_block_id)
+      << "parameterBlock with id " << parameter_block_id << "Backend id " << BackendId(parameter_block_id)
       << " does not exist";
   if (parameterBlockExists(parameter_block_id))
   {

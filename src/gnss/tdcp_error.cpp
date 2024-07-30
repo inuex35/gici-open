@@ -1,5 +1,4 @@
 #include "gici/gnss/tdcp_error.h"
-
 #include "gici/gnss/gnss_common.h"
 #include "gici/utility/transform.h"
 #include "gici/estimate/pose_local_parameterization.h"
@@ -8,14 +7,11 @@ namespace gici {
 
 template<int... Ns>
 TDCPError<Ns ...>::TDCPError(
-                       const GnssMeasurement& measurement,
-                       const GnssMeasurementIndex index,
-                       const GnssErrorParameter& error_parameter)
+                       const GnssMeasurement& last_measurement,
+                       const GnssMeasurement& cur_measurement,
+                        const State& last_state, const State& cur_state)
   : measurement_(measurement), error_parameter_(error_parameter)
 {
-  satellite_ = measurement.getSat(index);
-  observation_ = measurement.getObs(index);
-
   if (dims_.kNumParameterBlocks == 4 && 
       dims_.GetDim(0) == 3 && dims_.GetDim(1) == 3 && 
       dims_.GetDim(2) == 1 && dims_.GetDim(3) == 1) {
@@ -102,14 +98,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
     v_WR_ECEF_2 = coordinate_->rotate(v_WR_2, GeoType::ENU, GeoType::ECEF);
   }
 
-  double timestamp = measurement_.timestamp;
-  double rho = gnss_common::satelliteToReceiverDistance(
-    satellite_.sat_position, t_WR_ECEF);
-  double elevation = gnss_common::satelliteElevation(
-    satellite_.sat_position, t_WR_ECEF);
-  double azimuth = gnss_common::satelliteAzimuth(
-    satellite_.sat_position, t_WR_ECEF);
-
+  double rho = gnss_common::satelliteToReceiverDistance(satellite_.sat_position, t_WR_ECEF);
   Eigen::Vector3d e = (satellite_.sat_position - t_WR_ECEF) / rho;
   Eigen::Vector3d v_sat = satellite_.sat_velocity;
   Eigen::Vector3d p_sat = satellite_.sat_position;
@@ -125,7 +114,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
   double tdcp_estimate = 
     (range_rate_2 - range_rate_1) + (clock_bias_2 - clock_bias_1);
 
-  double tdcp = observation_.tdcp;
+  double tdcp = observation_.phaserange - observation2_.phaserange;
   Eigen::Matrix<double, 1, 1> error = 
     Eigen::Matrix<double, 1, 1>(tdcp - tdcp_estimate);
 
@@ -135,29 +124,22 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
   if (jacobians != nullptr)
   {
     Eigen::Matrix<double, 1, 3> J_t_ECEF = Eigen::Matrix<double, 1, 3>::Zero();
-
-    Eigen::Matrix<double, 1, 3> J_v_ECEF_1 = 
-      -((t_WR_ECEF - satellite_.sat_position) / rho).transpose();
-    Eigen::Matrix<double, 1, 3> J_v_ECEF_2 = 
-      ((t_WR_ECEF - satellite_.sat_position) / rho).transpose();
+    Eigen::Matrix<double, 1, 3> J_v_ECEF_1 = -e.transpose();
+    Eigen::Matrix<double, 1, 3> J_v_ECEF_2 = e.transpose();
 
     Eigen::Matrix<double, 1, 6> J_T_WS;
     Eigen::Matrix<double, 1, 9> J_speed_and_bias;
     Eigen::Matrix<double, 1, 3> J_t_SR_S;
+
     if (is_estimate_body_) {
       Eigen::Matrix<double, 1, 3> J_t_W = Eigen::Matrix<double, 1, 3>::Zero();
 
-      Eigen::Matrix3d R_ECEF_ENU = coordinate_->rotationMatrix(
-        GeoType::ENU, GeoType::ECEF);
+      Eigen::Matrix3d R_ECEF_ENU = coordinate_->rotationMatrix(GeoType::ENU, GeoType::ECEF);
       Eigen::Matrix<double, 1, 3> J_v_W_1 = J_v_ECEF_1 * R_ECEF_ENU;
       Eigen::Matrix<double, 1, 3> J_v_W_2 = J_v_ECEF_2 * R_ECEF_ENU;
 
-      Eigen::Matrix<double, 1, 3> J_q_WS_1 = J_v_W_1 * 
-        skewSymmetric(angular_velocity_) * 
-        -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
-      Eigen::Matrix<double, 1, 3> J_q_WS_2 = J_v_W_2 * 
-        skewSymmetric(angular_velocity_) * 
-        -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
+      Eigen::Matrix<double, 1, 3> J_q_WS_1 = J_v_W_1 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
+      Eigen::Matrix<double, 1, 3> J_q_WS_2 = J_v_W_2 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
 
       J_T_WS.setZero();
       J_T_WS.topLeftCorner(1, 3) = J_t_W;
@@ -167,8 +149,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
       J_speed_and_bias.topLeftCorner(1, 3) = J_v_W_1;
       J_speed_and_bias.topRightCorner(1, 3) = J_v_W_2;
 
-      J_t_SR_S = J_v_W_1 * skewSymmetric(angular_velocity_) * 
-                 q_WS.toRotationMatrix();
+      J_t_SR_S = J_v_W_1 * skewSymmetric(angular_velocity_) * q_WS.toRotationMatrix();
     }
 
     Eigen::Matrix<double, 1, 1> J_bias_1 = -Eigen::MatrixXd::Identity(1, 1);
@@ -179,10 +160,9 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
       if (jacobians[0] != nullptr) {
         Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0(jacobians[0]);
         J0 = square_root_information_ * J_t_ECEF;
-        
+
         if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor> >
-              J0_minimal_mapped(jacobians_minimal[0]);
+          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
           J0_minimal_mapped = J0;
         }
       }
@@ -191,8 +171,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J1 = square_root_information_ * J_v_ECEF_1;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor> >
-              J1_minimal_mapped(jacobians_minimal[1]);
+          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
           J1_minimal_mapped = J1;
         }
       }
@@ -201,8 +180,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J2 = square_root_information_ * J_bias_1;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[2] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor> >
-              J2_minimal_mapped(jacobians_minimal[2]);
+          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J2_minimal_mapped(jacobians_minimal[2]);
           J2_minimal_mapped = J2;
         }
       }
@@ -211,8 +189,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J3 = square_root_information_ * J_bias_2;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[3] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor> >
-              J3_minimal_mapped(jacobians_minimal[3]);
+          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J3_minimal_mapped(jacobians_minimal[3]);
           J3_minimal_mapped = J3;
         }
       }
@@ -230,8 +207,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J0 = J0_minimal * J_lift;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor> >
-              J0_minimal_mapped(jacobians_minimal[0]);
+          Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
           J0_minimal_mapped = J0_minimal;
         }
       }
@@ -240,8 +216,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J1 = square_root_information_ * J_v_ECEF_1;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor> >
-              J1_minimal_mapped(jacobians_minimal[1]);
+          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
           J1_minimal_mapped = J1;
         }
       }
@@ -250,8 +225,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J2 = square_root_information_ * J_v_ECEF_2;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[2] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor> >
-              J2_minimal_mapped(jacobians_minimal[2]);
+          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J2_minimal_mapped(jacobians_minimal[2]);
           J2_minimal_mapped = J2;
         }
       }
@@ -260,8 +234,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J3 = square_root_information_ * J_t_SR_S;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[3] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor> >
-              J3_minimal_mapped(jacobians_minimal[3]);
+          Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J3_minimal_mapped(jacobians_minimal[3]);
           J3_minimal_mapped = J3;
         }
       }
@@ -270,8 +243,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J4 = square_root_information_ * J_bias_1;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[4] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor> >
-              J4_minimal_mapped(jacobians_minimal[4]);
+          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J4_minimal_mapped(jacobians_minimal[4]);
           J4_minimal_mapped = J4;
         }
       }
@@ -280,8 +252,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         J5 = square_root_information_ * J_bias_2;
 
         if (jacobians_minimal != nullptr && jacobians_minimal[5] != nullptr) {
-          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor> >
-              J5_minimal_mapped(jacobians_minimal[5]);
+          Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J5_minimal_mapped(jacobians_minimal[5]);
           J5_minimal_mapped = J5;
         }
       }

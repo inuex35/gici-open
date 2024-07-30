@@ -127,7 +127,9 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   curGnssRov() = measurement_rov;
   curGnssRov().position = position_prior;
   curGnssRef() = measurement_ref;
-
+  int num_valid_system = 0;
+  addClockParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_system, 
+    std::map<char, double>(), true);
   // Erase duplicated phases, arrange to one observation per phase
   gnss_common::rearrangePhasesAndCodes(curGnssRov());
   gnss_common::rearrangePhasesAndCodes(curGnssRef());
@@ -154,6 +156,7 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   states_[index].status = GnssSolutionStatus::Single;
   latest_state_index_ = index;
   // GNSS extrinsics, it should be added at initialization step
+
   CHECK(gnss_extrinsics_id_.valid());
   // ambiguity blocks
   addSdAmbiguityParameterBlocks(curGnssRov(), 
@@ -186,6 +189,13 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   addDdPhaserangeResidualBlocks(
     curGnssRov(), curGnssRef(), phase_index_pairs, states_[index]);
 
+  // Add tdcp residual blocks
+  if (!isFirstEpoch()) {
+    LOG(INFO) << "TDCP";
+    addTdcpResidualBlocks(
+      curGnssRov(), lastGnssRov(), states_[index], states_[latest_state_index_ - 1]);
+  }
+
   // Add doppler residual blocks
   addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
     false, getImuMeasurementNear(timestamp).angular_velocity);
@@ -215,6 +225,7 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
 
   return true;
 }
+
 
 // Add image measurements and state
 bool RtkImuCameraRrrEstimator::addImageMeasurementAndState(

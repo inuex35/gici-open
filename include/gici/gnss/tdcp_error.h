@@ -3,6 +3,7 @@
 #include <ceres/ceres.h>
 #include <Eigen/Core>
 
+#include "gici/gnss/gnss_common.h"
 #include "gici/estimate/error_interface.h"
 #include "gici/gnss/geodetic_coordinate.h"
 #include "gici/gnss/gnss_types.h"
@@ -32,9 +33,9 @@ public:
       : phase1_(phase1), phase2_(phase2), delta_time_(delta_time) {}
 
   TDCPError(
-            const GnssMeasurement& measurement,
-            const GnssMeasurementIndex index,
-            const GnssErrorParameter& error_parameter);
+            const GnssMeasurement& last_measurement,
+            const GnssMeasurement& cur_measurement,
+            const State& last_state, const State& cur_state);
 
   virtual ~TDCPError() {}
 
@@ -80,6 +81,8 @@ protected:
   GnssMeasurement measurement_;
   Satellite satellite_;
   Observation observation_;
+  Satellite satellite2_;
+  Observation observation2_;
   bool is_estimate_body_;
   int parameter_block_group_;
   GnssErrorParameter error_parameter_;
@@ -89,6 +92,5 @@ protected:
 };
 
 template class TDCPError<3, 3, 1, 1>;
-template class TDCPError<7, 9, 1, 1>;
 
 }  // namespace gici

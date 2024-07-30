@@ -583,7 +583,7 @@ int AmbiguityResolution::solveLanes(
       active_float_ambiguities = float_ambiguities.topRows(num_active);
       active_float_covariance = float_covariance.topLeftCorner(num_active, num_active);
     }
-    // if (ratio != 0.0) LOG(INFO) << (int)lane_type << ": " << ratio << " | " << active_float_ambiguities.transpose();
+    //if (ratio != 0.0) LOG(INFO) << (int)lane_type << ": " << ratio << " | " << active_float_ambiguities.transpose();
   }
   // solve by rounding
   else {

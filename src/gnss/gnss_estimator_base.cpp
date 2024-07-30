@@ -928,54 +928,54 @@ void GnssEstimatorBase::addPhaserangeResidualBlocks(
   }
 }
 
+// Add Tdcp block to graph
 void GnssEstimatorBase::addTdcpResidualBlocks(
-    const GnssMeasurement& measurement1,
-    const GnssMeasurement& measurement2,
-    const State& state1,
-    const State& state2) {
+  const GnssMeasurement& last_measurement,
+  const GnssMeasurement& cur_measurement,
+  const State& last_state, const State& cur_state)
+{
+  double dt = cur_state.timestamp - last_state.timestamp;
+  CHECK(dt >= 0.0);
+  double damb_error = gnss_base_options_.error_parameter.tdcp_error_factor;
+  CHECK(damb_error != 0.0);
+  Eigen::Matrix<double, 1, 1> damb_covariance = 
+    Eigen::Matrix<double, 1, 1>::Identity() * square(damb_error) * dt;
 
-  for (const auto& sat : measurement1.satellites) {
-    const auto& prn = sat.first;
-    if (measurement2.satellites.find(prn) == measurement2.satellites.end()) {
-      continue;  // PRN not found in both measurements
+  for (const auto& [key, sat] : cur_measurement.satellites) {
+    for (const auto& [key2, sat2] : last_measurement.satellites) {
+      if (sat.prn != sat2.prn) {
+        continue;
+      }
+
+      /*
+      // check cycle slip
+      std::string prn = cur_state.ids[i].gPrn();
+      int phase_id = cur_state.ids[i].gPhaseId();
+      Satellite& satellite = cur_measurement.getSat(prn);
+      bool slip = false;
+
+      for (auto obs : satellite.observations) {
+        if (gnss_common::getPhaseID(satellite.getSystem(), obs.first) == phase_id) {
+          slip = obs.second.slip;
+        }
+      }
+      // if slip happened, we do not add ambiguity time constraint
+      if (slip) continue;
+      */
+
+      std::shared_ptr<TDCPError> tdcp_error = 
+        std::make_shared<TDCPError>(last_measurement, cur_measurement, last_state, cur_state);
+      graph_->addResidualBlock(tdcp_error, nullptr,
+        graph_->parameterBlockPtr(last_state.id.asInteger()),
+        graph_->parameterBlockPtr(cur_state.id.asInteger()));
+
+      // reset initial value
+      *graph_->parameterBlockPtr(cur_state.id.asInteger())->parameters() = 
+        *graph_->parameterBlockPtr(last_state.id.asInteger())->parameters();
+      graph_->setParameterBlockVariable(cur_state.id.asInteger());
+
+      break;
     }
-
-    const auto& satellite1 = sat.second;
-    const auto& satellite2 = measurement2.satellites.at(prn);
-
-    if (satellite1.observations.empty() || satellite2.observations.empty()) {
-      continue;
-    }
-
-    double phase1 = 0.0;
-    double phase2 = 0.0;
-
-    for (const auto& obs : satellite1.observations) {
-      phase1 = obs.second.phaserange;
-    }
-
-    for (const auto& obs : satellite2.observations) {
-      phase2 = obs.second.phaserange;
-    }
-
-    if (phase1 == 0.0 || phase2 == 0.0) {
-      continue;  // Invalid phase range measurements
-    }
-
-    double delta_time = measurement2.timestamp - measurement1.timestamp;
-
-    std::shared_ptr<TDCPError<3, 3, 1, 1>> tdcp_error =
-        std::make_shared<TDCPError<3, 3, 1, 1>>(phase1, phase2, delta_time);
-
-    char system = satellite1.getSystem();
-    BackendId clock_id1 = createGnssClockId(system, measurement1.id);
-    BackendId clock_id2 = createGnssClockId(system, measurement2.id);
-
-    graph_->addResidualBlock(tdcp_error, nullptr,
-                             graph_->parameterBlockPtr(state1.id.asInteger()),
-                             graph_->parameterBlockPtr(state2.id.asInteger()),
-                             graph_->parameterBlockPtr(clock_id1.asInteger()),
-                             graph_->parameterBlockPtr(clock_id2.asInteger()));
   }
 }
 
