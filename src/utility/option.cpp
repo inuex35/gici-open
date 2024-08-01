@@ -33,7 +33,7 @@
 #include "gici/fusion/ppp_imu_tc_estimator.h"
 #include "gici/fusion/gnss_imu_camera_srr_estimator.h"
 #include "gici/fusion/spp_imu_camera_rrr_estimator.h"
-#include "gici/fusion/rtk_imu_camera_tdcp_rrr_estimator.h"
+#include "gici/fusion/rtk_imu_camera_rrr_estimator.h"
 
 namespace gici {
 

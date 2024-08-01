@@ -35,7 +35,9 @@ public:
   TDCPError(
             const GnssMeasurement& last_measurement,
             const GnssMeasurement& cur_measurement,
-            const State& last_state, const State& cur_state);
+            const State& last_state, const State& cur_state,
+            const GnssErrorParameter& error_parameter);
+
 
   virtual ~TDCPError() {}
 
@@ -78,7 +80,11 @@ protected:
   ceres::internal::StaticParameterDims<Ns...> dims_;
 
   // Missing member variables
-  GnssMeasurement measurement_;
+  GnssMeasurement last_measurement_;
+  GnssMeasurement cur_measurement_;
+  State last_state_;
+  State cur_state_;
+
   Satellite satellite_;
   Observation observation_;
   Satellite satellite2_;

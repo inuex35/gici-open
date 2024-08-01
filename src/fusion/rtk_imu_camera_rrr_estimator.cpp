@@ -193,7 +193,7 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   if (!isFirstEpoch()) {
     LOG(INFO) << "TDCP";
     addTdcpResidualBlocks(
-      curGnssRov(), lastGnssRov(), states_[index], states_[latest_state_index_ - 1]);
+      lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
   }
 
   // Add doppler residual blocks

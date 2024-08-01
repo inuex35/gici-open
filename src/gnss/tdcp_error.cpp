@@ -9,8 +9,9 @@ template<int... Ns>
 TDCPError<Ns ...>::TDCPError(
                        const GnssMeasurement& last_measurement,
                        const GnssMeasurement& cur_measurement,
-                        const State& last_state, const State& cur_state)
-  : measurement_(measurement), error_parameter_(error_parameter)
+                       const State& last_state, const State& cur_state, const GnssErrorParameter& error_parameter)
+  : last_measurement_(last_measurement), cur_measurement_(cur_measurement),
+    last_state_(last_state), cur_state_(cur_state), error_parameter_(error_parameter)
 {
   if (dims_.kNumParameterBlocks == 4 && 
       dims_.GetDim(0) == 3 && dims_.GetDim(1) == 3 && 
@@ -37,7 +38,7 @@ void TDCPError<Ns ...>::setInformation(const GnssErrorParameter& error_parameter
   double factor = error_parameter_.tdcp_error_factor;
   covariance_ = covariance_t(factor * factor);
   char system = satellite_.getSystem();
-  covariance_ *= error_parameter_.system_error_ratio.at(system) * error_parameter_.system_error_ratio.at(system);
+  //covariance_ *= error_parameter_.system_error_ratio.at(system) * error_parameter_.system_error_ratio.at(system);
 
   information_ = covariance_.inverse();
   Eigen::LLT<information_t> lltOfInformation(information_);
