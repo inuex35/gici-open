@@ -288,6 +288,8 @@ struct GnssErrorParameter {
   // Error factor a/b/c according to RTKLIB
   std::vector<double> phase_error_factor{0.003, 0.003, 0.0};
 
+  double tdcp_error_factor = 0.2;
+  
   // Doppler error factor (m/s)
   double doppler_error_factor = 0.2;
 

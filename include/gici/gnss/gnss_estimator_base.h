@@ -12,7 +12,7 @@
 #include "gici/gnss/gnss_types.h"
 #include "gici/gnss/ambiguity_resolution.h"
 #include "gici/gnss/gnss_common.h"
-
+#include "gici/gnss/wheel_velocity_error.h"  // Include the wheel velocity error header
 namespace gici {
 
 // GNSS estimator common options
@@ -141,6 +141,12 @@ protected:
   void addIfbParameterBlocks(
     GnssMeasurement& measurement, 
     const int32_t id);
+
+  void addTdcpResidualBlocks(
+    const GnssMeasurement& measurement1,
+    const GnssMeasurement& measurement2,
+    const State& state1,
+    const State& state2);
 
   // Add frequency blocks to graph
   void addFrequencyParameterBlocks(
