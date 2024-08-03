@@ -190,15 +190,6 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
     false, getImuMeasurementNear(timestamp).angular_velocity);
 
-  // Add tdcp residual blocks
-  /*
-  if (!isFirstEpoch()) {
-    LOG(INFO) << "TDCP";
-    addTdcpResidualBlocks(
-      lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
-  }
-  */
-
   // Add relative errors
   if (lastGnssState().valid()) {  // maybe invalid here because of long term GNSS absent
     // frequency
@@ -217,6 +208,12 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
     addHMCResidualBlock(states_[index]);
     // non-holonomic constraint
     addNHCResidualBlock(states_[index]);
+  }
+
+  // Add tdcp residual blocks
+  if (!isFirstEpoch()) {
+    addTdcpResidualBlocks(
+      lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
   }
 
   // Compute DOP

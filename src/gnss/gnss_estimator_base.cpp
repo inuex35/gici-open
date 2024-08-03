@@ -961,30 +961,15 @@ void GnssEstimatorBase::addTdcpResidualBlocks(
       // if slip happened, we do not add ambiguity time constraint
       if (slip) continue;
       */
-      std::vector<BackendId> cur_clock_ids, last_clock_ids;
-      for (auto system : getGnssSystemList()) {
-        if (system == 'R') continue;  // GLONASS clock is considered as unstable
-          BackendId last_clock_id = changeIdType(last_state.id, IdType::gClock, system);
-          BackendId cur_clock_id = changeIdType(cur_state.id, IdType::gClock, system);
-          if (!graph_->parameterBlockExists(last_clock_id.asInteger())) continue;
-          if (!graph_->parameterBlockExists(cur_clock_id.asInteger())) continue;
-          cur_clock_ids.push_back(cur_clock_id);
-          last_clock_ids.push_back(last_clock_id);
-        }
-      CHECK(cur_clock_ids.size() == last_clock_ids.size());
-      if (cur_clock_ids.size() < 2) return;
 
       auto last_state_ptr = graph_->parameterBlockPtr(last_state.id.asInteger());
       auto cur_state_ptr = graph_->parameterBlockPtr(cur_state.id.asInteger());
-      auto last_clock_ptr = graph_->parameterBlockPtr(last_clock_ids[0].asInteger());
-      auto cur_clock_ptr = graph_->parameterBlockPtr(cur_clock_ids[0].asInteger());
-      std::shared_ptr<TDCPError<7,7,1,1>> tdcp_error =
-        std::make_shared<TDCPError<7,7,1,1>>(last_measurement, cur_measurement, last_state, cur_state, gnss_base_options_.error_parameter);
+      std::shared_ptr<TDCPError<7,7>> tdcp_error =
+        std::make_shared<TDCPError<7,7>>(last_measurement, cur_measurement, last_state, cur_state, gnss_base_options_.error_parameter);
+      tdcp_error->setCoordinate(coordinate_);
       graph_->addResidualBlock(tdcp_error, nullptr,
         last_state_ptr,
-        cur_state_ptr,
-        last_clock_ptr,
-        cur_clock_ptr
+        cur_state_ptr
       );
 
       // reset initial value
@@ -2233,6 +2218,7 @@ void GnssEstimatorBase::addGnssResidualMarginBlocks(const State& state)
     static_cast<int>(ErrorType::kPhaserangeError),
     static_cast<int>(ErrorType::kPhaserangeErrorSD),
     static_cast<int>(ErrorType::kPhaserangeErrorDD),
+    static_cast<int>(ErrorType::kTDCPError),
     static_cast<int>(ErrorType::kDopplerError),
     static_cast<int>(ErrorType::kAmbiguityError),
     static_cast<int>(ErrorType::kClockError),
@@ -2524,6 +2510,7 @@ void GnssEstimatorBase::eraseGnssMeasurementResidualBlocks(const State& state)
     static_cast<int>(ErrorType::kPhaserangeError),
     static_cast<int>(ErrorType::kPhaserangeErrorSD),
     static_cast<int>(ErrorType::kPhaserangeErrorDD),
+    static_cast<int>(ErrorType::kTDCPError),
     static_cast<int>(ErrorType::kDopplerError)};
 
   const BackendId& parameter_id = state.id;

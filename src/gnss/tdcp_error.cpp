@@ -6,28 +6,32 @@
 namespace gici {
 
 template<int... Ns>
-TDCPError<Ns ...>::TDCPError(
-                       const GnssMeasurement& last_measurement,
-                       const GnssMeasurement& cur_measurement,
-                       const State& last_state, const State& cur_state, const GnssErrorParameter& error_parameter)
+TDCPError<Ns...>::TDCPError(
+    const GnssMeasurement& last_measurement,
+    const GnssMeasurement& cur_measurement,
+    const State& last_state,
+    const State& cur_state,
+    const GnssErrorParameter& error_parameter)
   : last_measurement_(last_measurement), cur_measurement_(cur_measurement),
-    last_state_(last_state), cur_state_(cur_state), error_parameter_(error_parameter)
+    last_state_(last_state), cur_state_(cur_state), error_parameter_(error_parameter),
+    is_estimate_body_(false), parameter_block_group_(0)
 {
-  if (dims_.kNumParameterBlocks == 4 && 
-      dims_.GetDim(0) == 3 && dims_.GetDim(1) == 3 && 
-      dims_.GetDim(2) == 1 && dims_.GetDim(3) == 1) {
+  // Check the dimensions and set flags accordingly
+  if (dims_.kNumParameterBlocks == 2 && 
+      dims_.GetDim(0) == 3 && dims_.GetDim(1) == 3) {
     is_estimate_body_ = false;
     parameter_block_group_ = 1;
-  } else if (dims_.kNumParameterBlocks == 4 &&
-      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7 &&
-      dims_.GetDim(2) == 1 && dims_.GetDim(3) == 1) {
+  } else if (dims_.kNumParameterBlocks == 2 &&
+      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7) {
     is_estimate_body_ = true;
     parameter_block_group_ = 2;
   } else {
+    LOG(INFO) << "dims_.kNumParameterBlocks:" << dims_.kNumParameterBlocks;
     LOG(FATAL) << "TDCPError parameter blocks setup invalid!";
   }
 
-  setInformation(error_parameter);
+  // Initialize other necessary variables and data structures
+  setInformation(error_parameter_);
 }
 
 template<int... Ns>
@@ -35,8 +39,8 @@ void TDCPError<Ns ...>::setInformation(const GnssErrorParameter& error_parameter
 {
   error_parameter_ = error_parameter;
   double factor = error_parameter_.tdcp_error_factor;
-  covariance_ = covariance_t(square(factor));
-  char system = satellite_.getSystem();
+  covariance_ = covariance_t(factor * factor);
+  //char system = satellite_.getSystem();
   //covariance_ *= error_parameter_.system_error_ratio.at(system) * error_parameter_.system_error_ratio.at(system);
 
   information_ = covariance_.inverse();
@@ -62,12 +66,15 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
     Eigen::Vector3d v_WR_ECEF_1, v_WR_ECEF_2;
     double clock_bias_1, clock_bias_2;
 
+    if (!coordinate_ || !coordinate_->isZeroSetted())
+    {
+        return false;  // LOG(FATAL)の代わりに、falseを返してエラーを示す
+    }
+
     if (!is_estimate_body_)
     {
         t_WR_ECEF = Eigen::Map<const Eigen::Vector3d>(parameters[0]);
         v_WR_ECEF_1 = Eigen::Map<const Eigen::Vector3d>(parameters[1]);
-        clock_bias_1 = parameters[2][0];
-        clock_bias_2 = parameters[3][0];
     }
     else
     {
@@ -78,9 +85,6 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         v_WR_ECEF_2 = Eigen::Map<const Eigen::Vector3d>(&parameters[2][0]);
 
         t_SR_S = Eigen::Map<const Eigen::Vector3d>(parameters[3]);
-
-        clock_bias_1 = parameters[4][0];
-        clock_bias_2 = parameters[5][0];
 
         Eigen::Vector3d t_WR_W = t_WS_W + q_WS * t_SR_S;
 
@@ -114,12 +118,11 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_2(0) -
          v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_2(1));
     double tdcp_estimate =
-        (range_rate_2 - range_rate_1) + (clock_bias_2 - clock_bias_1);
+        (range_rate_2 - range_rate_1);
 
     double tdcp = observation_.phaserange - observation2_.phaserange;
     Eigen::Matrix<double, 1, 1> error =
         Eigen::Matrix<double, 1, 1>(tdcp - tdcp_estimate);
-
     Eigen::Map<Eigen::Matrix<double, 1, 1> > weighted_error(residuals);
     weighted_error = square_root_information_ * error;
     if (jacobians != nullptr)
@@ -234,6 +237,7 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
                     J1_minimal_mapped = J1;
                 }
             }
+
             if (jacobians[2] != nullptr)
             {
                 Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J2(jacobians[2]);
@@ -245,6 +249,8 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
                     J2_minimal_mapped = J2;
                 }
             }
+            /*
+
             if (jacobians[3] != nullptr)
             {
                 Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J3(jacobians[3]);
@@ -256,6 +262,8 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
                     J3_minimal_mapped = J3;
                 }
             }
+            LOG(INFO) << "test2";
+
             if (jacobians[4] != nullptr)
             {
                 Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J4(jacobians[4]);
@@ -278,6 +286,8 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
                     J5_minimal_mapped = J5;
                 }
             }
+            */
+
         }
     }
     return true;

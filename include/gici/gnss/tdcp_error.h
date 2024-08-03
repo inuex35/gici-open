@@ -35,7 +35,8 @@ public:
   TDCPError(
             const GnssMeasurement& last_measurement,
             const GnssMeasurement& cur_measurement,
-            const State& last_state, const State& cur_state,
+            const State& last_state, 
+            const State& cur_state,
             const GnssErrorParameter& error_parameter);
 
 
@@ -100,6 +101,6 @@ protected:
   covariance_t covariance_;
 };
 
-template class TDCPError<7, 7, 1, 1>;
+template class TDCPError<7, 7>;
 
 }  // namespace gici
