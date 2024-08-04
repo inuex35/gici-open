@@ -971,13 +971,6 @@ void GnssEstimatorBase::addTdcpResidualBlocks(
         last_state_ptr,
         cur_state_ptr
       );
-
-      // reset initial value
-      *graph_->parameterBlockPtr(cur_state.id.asInteger())->parameters() = 
-        *graph_->parameterBlockPtr(last_state.id.asInteger())->parameters();
-      graph_->setParameterBlockVariable(cur_state.id.asInteger());
-
-      break;
     }
   }
 }

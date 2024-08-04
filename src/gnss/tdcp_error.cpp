@@ -18,15 +18,11 @@ TDCPError<Ns...>::TDCPError(
 {
   // Check the dimensions and set flags accordingly
   if (dims_.kNumParameterBlocks == 2 && 
-      dims_.GetDim(0) == 3 && dims_.GetDim(1) == 3) {
+      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7) {
     is_estimate_body_ = false;
     parameter_block_group_ = 1;
-  } else if (dims_.kNumParameterBlocks == 2 &&
-      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7) {
-    is_estimate_body_ = true;
-    parameter_block_group_ = 2;
-  } else {
-    LOG(INFO) << "dims_.kNumParameterBlocks:" << dims_.kNumParameterBlocks;
+  } 
+    else {
     LOG(FATAL) << "TDCPError parameter blocks setup invalid!";
   }
 
@@ -64,12 +60,6 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
     Eigen::Vector3d t_WR_ECEF, t_WS_W, t_SR_S;
     Eigen::Quaterniond q_WS;
     Eigen::Vector3d v_WR_ECEF_1, v_WR_ECEF_2;
-    double clock_bias_1, clock_bias_2;
-
-    if (!coordinate_ || !coordinate_->isZeroSetted())
-    {
-        return false;  // LOG(FATAL)の代わりに、falseを返してエラーを示す
-    }
 
     if (!is_estimate_body_)
     {
@@ -79,18 +69,14 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
     else
     {
         t_WS_W = Eigen::Map<const Eigen::Vector3d>(&parameters[0][0]);
-        q_WS = Eigen::Map<const Eigen::Quaterniond>(&parameters[0][3]);
-
+        q_WS = Eigen::Quaterniond(parameters[0][3], parameters[0][4], parameters[0][5], parameters[0][6]);
+        q_WS.normalize();  // Normalize the quaternion to ensure it's valid
         v_WR_ECEF_1 = Eigen::Map<const Eigen::Vector3d>(&parameters[1][0]);
         v_WR_ECEF_2 = Eigen::Map<const Eigen::Vector3d>(&parameters[2][0]);
-
         t_SR_S = Eigen::Map<const Eigen::Vector3d>(parameters[3]);
-
         Eigen::Vector3d t_WR_W = t_WS_W + q_WS * t_SR_S;
-
         Eigen::Vector3d v_WR_1 = v_WR_ECEF_1 + skewSymmetric(angular_velocity_) * q_WS * t_SR_S;
         Eigen::Vector3d v_WR_2 = v_WR_ECEF_2 + skewSymmetric(angular_velocity_) * q_WS * t_SR_S;
-
         if (!coordinate_)
         {
             LOG(FATAL) << "Coordinate not set!";
@@ -104,193 +90,101 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
         v_WR_ECEF_2 = coordinate_->rotate(v_WR_2, GeoType::ENU, GeoType::ECEF);
     }
 
-    double rho = gnss_common::satelliteToReceiverDistance(satellite_.sat_position, t_WR_ECEF);
-    Eigen::Vector3d e = (satellite_.sat_position - t_WR_ECEF) / rho;
-    Eigen::Vector3d v_sat = satellite_.sat_velocity;
-    Eigen::Vector3d p_sat = satellite_.sat_position;
-    Eigen::Vector3d vs_1 = v_sat - v_WR_ECEF_1;
-    Eigen::Vector3d vs_2 = v_sat - v_WR_ECEF_2;
+        double rho = gnss_common::satelliteToReceiverDistance(satellite_.sat_position, t_WR_ECEF);
+        Eigen::Vector3d e = (satellite_.sat_position - t_WR_ECEF) / rho;
+        Eigen::Vector3d v_sat = satellite_.sat_velocity;
+        Eigen::Vector3d p_sat = satellite_.sat_position;
+        Eigen::Vector3d vs_1 = v_sat - v_WR_ECEF_1;
+        Eigen::Vector3d vs_2 = v_sat - v_WR_ECEF_2;
 
-    double range_rate_1 = vs_1.dot(e) + OMGE / CLIGHT *
-        (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_1(0) -
-         v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_1(1));
-    double range_rate_2 = vs_2.dot(e) + OMGE / CLIGHT *
-        (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_2(0) -
-         v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_2(1));
-    double tdcp_estimate =
-        (range_rate_2 - range_rate_1);
+        double range_rate_1 = vs_1.dot(e) + OMGE / CLIGHT *
+            (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_1(0) -
+             v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_1(1));
+        double range_rate_2 = vs_2.dot(e) + OMGE / CLIGHT *
+            (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_2(0) -
+             v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_2(1));
+        double tdcp_estimate = (range_rate_2 - range_rate_1);
 
-    double tdcp = observation_.phaserange - observation2_.phaserange;
-    Eigen::Matrix<double, 1, 1> error =
-        Eigen::Matrix<double, 1, 1>(tdcp - tdcp_estimate);
-    Eigen::Map<Eigen::Matrix<double, 1, 1> > weighted_error(residuals);
-    weighted_error = square_root_information_ * error;
-    if (jacobians != nullptr)
-    {
-        Eigen::Matrix<double, 1, 3> J_t_ECEF = Eigen::Matrix<double, 1, 3>::Zero();
-        Eigen::Matrix<double, 1, 3> J_v_ECEF_1 = -e.transpose();
-        Eigen::Matrix<double, 1, 3> J_v_ECEF_2 = e.transpose();
+        double tdcp = observation_.phaserange - observation2_.phaserange;
+        Eigen::Matrix<double, 1, 1> error = Eigen::Matrix<double, 1, 1>(tdcp - tdcp_estimate);
 
-        Eigen::Matrix<double, 1, 6> J_T_WS;
-        Eigen::Matrix<double, 1, 9> J_speed_and_bias;
-        Eigen::Matrix<double, 1, 3> J_t_SR_S;
+        LOG(INFO) << square_root_information_;
 
-        if (is_estimate_body_)
-        {
-            Eigen::Matrix<double, 1, 3> J_t_W = Eigen::Matrix<double, 1, 3>::Zero();
+        Eigen::Map<Eigen::Matrix<double, 1, 1>> weighted_error(residuals);
+        weighted_error = square_root_information_ * error;
 
-            Eigen::Matrix3d R_ECEF_ENU = coordinate_->rotationMatrix(GeoType::ENU, GeoType::ECEF);
-            Eigen::Matrix<double, 1, 3> J_v_W_1 = J_v_ECEF_1 * R_ECEF_ENU;
-            Eigen::Matrix<double, 1, 3> J_v_W_2 = J_v_ECEF_2 * R_ECEF_ENU;
+        if (jacobians != nullptr) {
+            Eigen::Matrix<double, 1, 3> J_t_ECEF = Eigen::Matrix<double, 1, 3>::Zero();
+            Eigen::Matrix<double, 1, 3> J_v_ECEF_1 = -e.transpose();
+            Eigen::Matrix<double, 1, 3> J_v_ECEF_2 = e.transpose();
 
-            Eigen::Matrix<double, 1, 3> J_q_WS_1 = J_v_W_1 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
-            Eigen::Matrix<double, 1, 3> J_q_WS_2 = J_v_W_2 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
+            if (is_estimate_body_) {
+                Eigen::Matrix<double, 1, 3> J_t_W = Eigen::Matrix<double, 1, 3>::Zero();
+                Eigen::Matrix3d R_ECEF_ENU = coordinate_->rotationMatrix(GeoType::ENU, GeoType::ECEF);
+                Eigen::Matrix<double, 1, 3> J_v_W_1 = J_v_ECEF_1 * R_ECEF_ENU;
+                Eigen::Matrix<double, 1, 3> J_v_W_2 = J_v_ECEF_2 * R_ECEF_ENU;
 
-            J_T_WS.setZero();
-            J_T_WS.topLeftCorner(1, 3) = J_t_W;
-            J_T_WS.topRightCorner(1, 3) = J_q_WS_1 + J_q_WS_2;
+                Eigen::Matrix<double, 1, 3> J_q_WS_1 = J_v_W_1 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
+                Eigen::Matrix<double, 1, 3> J_q_WS_2 = J_v_W_2 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
 
-            J_speed_and_bias.setZero();
-            J_speed_and_bias.topLeftCorner(1, 3) = J_v_W_1;
-            J_speed_and_bias.topRightCorner(1, 3) = J_v_W_2;
-
-            J_t_SR_S = J_v_W_1 * skewSymmetric(angular_velocity_) * q_WS.toRotationMatrix();
-        }
-
-        Eigen::Matrix<double, 1, 1> J_bias_1 = -Eigen::MatrixXd::Identity(1, 1);
-        Eigen::Matrix<double, 1, 1> J_bias_2 = Eigen::MatrixXd::Identity(1, 1);
-
-        if (parameter_block_group_ == 1)
-        {
-            if (jacobians[0] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0(jacobians[0]);
-                J0 = square_root_information_ * J_t_ECEF;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
-                    J0_minimal_mapped = J0;
-                }
-            }
-            if (jacobians[1] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1(jacobians[1]);
-                J1 = square_root_information_ * J_v_ECEF_1;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
-                    J1_minimal_mapped = J1;
-                }
-            }
-            if (jacobians[2] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J2(jacobians[2]);
-                J2 = square_root_information_ * J_bias_1;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[2] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J2_minimal_mapped(jacobians_minimal[2]);
-                    J2_minimal_mapped = J2;
-                }
-            }
-            if (jacobians[3] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J3(jacobians[3]);
-                J3 = square_root_information_ * J_bias_2;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[3] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J3_minimal_mapped(jacobians_minimal[3]);
-                    J3_minimal_mapped = J3;
-                }
-            }
-        }
-        if (parameter_block_group_ == 2)
-        {
-            if (jacobians[0] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J0(jacobians[0]);
-                Eigen::Matrix<double, 1, 6, Eigen::RowMajor> J0_minimal;
-                J0_minimal = square_root_information_ * J_T_WS;
+                Eigen::Matrix<double, 1, 6> J_T_WS;
+                J_T_WS.setZero();
+                J_T_WS.topLeftCorner(1, 3) = J_t_W;
+                J_T_WS.topRightCorner(1, 3) = J_q_WS_1 + J_q_WS_2;
 
                 Eigen::Matrix<double, 6, 7, Eigen::RowMajor> J_lift;
                 PoseLocalParameterization::liftJacobian(parameters[0], J_lift.data());
 
-                J0 = J0_minimal * J_lift;
 
-                if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
-                    J0_minimal_mapped = J0_minimal;
+                if (jacobians[0] != nullptr) {
+                    Eigen::Matrix<double, 1, 7> J0_minimal_full = J_T_WS * J_lift;
+                    Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J0(jacobians[0]);
+                    J0 = square_root_information_ * J0_minimal_full;
+
+
+                    if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
+                        Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
+                        J0_minimal_mapped = square_root_information_ * J_T_WS;
+                    }
+                }
+
+                if (jacobians[1] != nullptr) {
+                    Eigen::Matrix<double, 1, 7> J1_minimal_full = J_T_WS * J_lift;
+                    Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J1(jacobians[1]);
+                    J1 = square_root_information_ * J1_minimal_full;
+
+
+                    if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
+                        Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
+                        J1_minimal_mapped = square_root_information_ * J_T_WS;
+                    }
+                }
+        }
+        else {
+            if (jacobians[0] != nullptr) {
+                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0(jacobians[0]);
+                J0 = square_root_information_ * J_t_ECEF;
+
+                if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
+                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
+                    J0_minimal_mapped = J0;
                 }
             }
-            if (jacobians[1] != nullptr)
-            {
+
+            if (jacobians[1] != nullptr) {
                 Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1(jacobians[1]);
                 J1 = square_root_information_ * J_v_ECEF_1;
 
-                if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr)
-                {
+                if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
                     Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
                     J1_minimal_mapped = J1;
                 }
             }
-
-            if (jacobians[2] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J2(jacobians[2]);
-                J2 = square_root_information_ * J_v_ECEF_2;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[2] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J2_minimal_mapped(jacobians_minimal[2]);
-                    J2_minimal_mapped = J2;
-                }
-            }
-            /*
-
-            if (jacobians[3] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J3(jacobians[3]);
-                J3 = square_root_information_ * J_t_SR_S;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[3] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J3_minimal_mapped(jacobians_minimal[3]);
-                    J3_minimal_mapped = J3;
-                }
-            }
-            LOG(INFO) << "test2";
-
-            if (jacobians[4] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J4(jacobians[4]);
-                J4 = square_root_information_ * J_bias_1;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[4] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J4_minimal_mapped(jacobians_minimal[4]);
-                    J4_minimal_mapped = J4;
-                }
-            }
-            if (jacobians[5] != nullptr)
-            {
-                Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J5(jacobians[5]);
-                J5 = square_root_information_ * J_bias_2;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[5] != nullptr)
-                {
-                    Eigen::Map<Eigen::Matrix<double, 1, 1, Eigen::RowMajor>> J5_minimal_mapped(jacobians_minimal[5]);
-                    J5_minimal_mapped = J5;
-                }
-            }
-            */
-
         }
     }
-    return true;
+
+        return true;
 }
+
 
 }  // namespace gici
