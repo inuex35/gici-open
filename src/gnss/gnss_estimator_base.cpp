@@ -928,51 +928,63 @@ void GnssEstimatorBase::addPhaserangeResidualBlocks(
   }
 }
 
-// Add Tdcp block to graph
 void GnssEstimatorBase::addTdcpResidualBlocks(
-  const GnssMeasurement& last_measurement,
-  const GnssMeasurement& cur_measurement,
-  const State& last_state, const State& cur_state)
-{
-  double dt = cur_state.timestamp - last_state.timestamp;
-  CHECK(dt >= 0.0);
-  double damb_error = gnss_base_options_.error_parameter.tdcp_error_factor;
-  CHECK(damb_error != 0.0);
-  Eigen::Matrix<double, 1, 1> damb_covariance = 
-    Eigen::Matrix<double, 1, 1>::Identity() * square(damb_error) * dt;
+    const GnssMeasurement& last_measurement,
+    const GnssMeasurement& cur_measurement,
+    const State& last_state, const State& cur_state) {
+    double dt = cur_state.timestamp - last_state.timestamp;
+    CHECK(dt >= 0.0);
+    double damb_error = gnss_base_options_.error_parameter.tdcp_error_factor;
+    CHECK(damb_error != 0.0);
+    Eigen::Matrix<double, 1, 1> damb_covariance = 
+        Eigen::Matrix<double, 1, 1>::Identity() * square(damb_error) * dt;
 
-  for (const auto& [key, sat] : cur_measurement.satellites) {
-    for (const auto& [key2, sat2] : last_measurement.satellites) {
-      if (sat.prn != sat2.prn) {
-        continue;
-      }
-
-      /*
-      // check cycle slip
-      std::string prn = cur_state.ids[i].gPrn();
-      int phase_id = cur_state.ids[i].gPhaseId();
-      Satellite& satellite = cur_measurement.getSat(prn);
-      bool slip = false;
-      for (auto obs : satellite.observations) {
-        if (gnss_common::getPhaseID(satellite.getSystem(), obs.first) == phase_id) {
-          slip = obs.second.slip;
+    for (const auto& [key, cur_sat] : cur_measurement.satellites) {
+        auto it = last_measurement.satellites.find(key);
+        if (it == last_measurement.satellites.end()) {
+            continue; // 同じPRNの衛星がない場合はスキップ
         }
-      }
-      // if slip happened, we do not add ambiguity time constraint
-      if (slip) continue;
-      */
+        const Satellite& last_sat = it->second;
 
-      auto last_state_ptr = graph_->parameterBlockPtr(last_state.id.asInteger());
-      auto cur_state_ptr = graph_->parameterBlockPtr(cur_state.id.asInteger());
-      std::shared_ptr<TDCPError<7,7>> tdcp_error =
-        std::make_shared<TDCPError<7,7>>(last_measurement, cur_measurement, last_state, cur_state, gnss_base_options_.error_parameter);
-      tdcp_error->setCoordinate(coordinate_);
-      graph_->addResidualBlock(tdcp_error, nullptr,
-        last_state_ptr,
-        cur_state_ptr
-      );
+        // 現在の衛星と前回の衛星が同じPRNであることを確認
+        if (cur_sat.prn != last_sat.prn) {
+            continue;
+        }
+
+        // フェーズレンジの取得
+        double cur_phaserange = 0.0;
+        double last_phaserange = 0.0;
+        double wavelength = 0.0;
+        bool found = false;
+        
+        // 現在の衛星からフェーズレンジを取得
+        for (const auto& [obs_key, obs] : cur_sat.observations) {
+            cur_phaserange = obs.phaserange;
+            wavelength = obs.wavelength;
+            found = true;
+            break; // 最初の観測データを使用
+        }
+
+        // 過去の衛星からフェーズレンジを取得
+        for (const auto& [obs_key, obs] : last_sat.observations) {
+            last_phaserange = obs.phaserange;
+            found = found && true; // 両方の観測データが見つかった場合のみtrueにする
+            break; // 最初の観測データを使用
+        }
+
+        // フェーズレンジが両方取得できた場合にのみTDCPErrorを追加
+        if (found && cur_phaserange != 0.0 && last_phaserange != 0.0) {
+            auto last_state_ptr = graph_->parameterBlockPtr(last_state.id.asInteger());
+            auto cur_state_ptr = graph_->parameterBlockPtr(cur_state.id.asInteger());
+            std::shared_ptr<TDCPError<7,7>> tdcp_error =  std::make_shared<TDCPError<7,7>>(last_sat, cur_sat, last_state, cur_state, gnss_base_options_.error_parameter);
+            tdcp_error->setCoordinate(coordinate_);
+            graph_->addResidualBlock(tdcp_error, nullptr,
+                last_state_ptr,
+                cur_state_ptr
+            );
+            break;
+        }
     }
-  }
 }
 
 // Add doppler residual blocks to graph
@@ -2503,7 +2515,6 @@ void GnssEstimatorBase::eraseGnssMeasurementResidualBlocks(const State& state)
     static_cast<int>(ErrorType::kPhaserangeError),
     static_cast<int>(ErrorType::kPhaserangeErrorSD),
     static_cast<int>(ErrorType::kPhaserangeErrorDD),
-    static_cast<int>(ErrorType::kTDCPError),
     static_cast<int>(ErrorType::kDopplerError)};
 
   const BackendId& parameter_id = state.id;
@@ -2688,6 +2699,30 @@ void GnssEstimatorBase::eraseRelativeAmbiguityResidualBlock(
       if (!found) continue;
       graph_->removeResidualBlock(residual_block.residual_block_id);
     }
+  }
+}
+
+// Erase relative troposphere residual blocks
+void GnssEstimatorBase::eraseTDCPResidualBlock(
+  const State& last_state, const State& cur_state)
+{
+  const BackendId last_id = last_state.id;
+  const BackendId cur_id = cur_state.id;
+
+  Graph::ResidualBlockCollection residual_blocks = 
+    graph_->residuals(cur_id.asInteger());
+  for (auto residual_block : residual_blocks) {
+    if (residual_block.error_interface_ptr->typeInfo() != 
+        ErrorType::kTDCPError) continue;
+    auto parameters = graph_->parameters(residual_block.residual_block_id);
+    bool found = false;
+    for (auto parameter : parameters) {
+      if (parameter.first == last_id.asInteger()) {
+        found = true; break;
+      }
+    }
+    if (!found) continue;
+    graph_->removeResidualBlock(residual_block.residual_block_id);
   }
 }
 

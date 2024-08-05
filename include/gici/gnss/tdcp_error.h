@@ -33,8 +33,8 @@ public:
       : phase1_(phase1), phase2_(phase2), delta_time_(delta_time) {}
 
   TDCPError(
-            const GnssMeasurement& last_measurement,
-            const GnssMeasurement& cur_measurement,
+            const Satellite& last_sat,
+            const Satellite& cur_sat,
             const State& last_state, 
             const State& cur_state,
             const GnssErrorParameter& error_parameter);
@@ -82,9 +82,8 @@ protected:
 
   ceres::internal::StaticParameterDims<Ns...> dims_;
 
-  // Missing member variables
-  GnssMeasurement last_measurement_;
-  GnssMeasurement cur_measurement_;
+  Satellite last_sat_;
+  Satellite cur_sat_;
   State last_state_;
   State cur_state_;
 

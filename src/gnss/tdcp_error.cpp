@@ -7,20 +7,23 @@ namespace gici {
 
 template<int... Ns>
 TDCPError<Ns...>::TDCPError(
-    const GnssMeasurement& last_measurement,
-    const GnssMeasurement& cur_measurement,
+    const Satellite& last_sat,
+    const Satellite& cur_sat,
     const State& last_state,
     const State& cur_state,
     const GnssErrorParameter& error_parameter)
-  : last_measurement_(last_measurement), cur_measurement_(cur_measurement),
+  : last_sat_(last_sat), cur_sat_(cur_sat),
     last_state_(last_state), cur_state_(cur_state), error_parameter_(error_parameter),
     is_estimate_body_(false), parameter_block_group_(0)
 {
-  // Check the dimensions and set flags accordingly
   if (dims_.kNumParameterBlocks == 2 && 
-      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7) {
+      dims_.GetDim(2) == 7 && dims_.GetDim(3) == 7) {
     is_estimate_body_ = false;
     parameter_block_group_ = 1;
+  }   if (dims_.kNumParameterBlocks == 2 && 
+      dims_.GetDim(0) == 7 && dims_.GetDim(1) == 7) {
+    is_estimate_body_ = false;
+    parameter_block_group_ = 2;
   } 
     else {
     LOG(FATAL) << "TDCPError parameter blocks setup invalid!";
@@ -28,6 +31,15 @@ TDCPError<Ns...>::TDCPError(
 
   // Initialize other necessary variables and data structures
   setInformation(error_parameter_);
+  for (const auto& [obs_key, obs] : cur_sat_.observations) {
+    observation_ = obs; // Use the first observation found in current satellite
+    break;
+  }
+  for (const auto& [obs_key, obs] : last_sat_.observations) {
+    observation2_ = obs; // Use the first observation found in last satellite
+    break;
+  }
+
 }
 
 template<int... Ns>
@@ -57,134 +69,53 @@ bool TDCPError<Ns ...>::EvaluateWithMinimalJacobians(
     double const* const * parameters, double* residuals, double** jacobians,
     double** jacobians_minimal) const
 {
-    Eigen::Vector3d t_WR_ECEF, t_WS_W, t_SR_S;
+    Eigen::Vector3d t_WR_ECEF_1, t_WR_ECEF_2, t_WS_W, t_SR_S;
     Eigen::Quaterniond q_WS;
     Eigen::Vector3d v_WR_ECEF_1, v_WR_ECEF_2;
 
-    if (!is_estimate_body_)
-    {
-        t_WR_ECEF = Eigen::Map<const Eigen::Vector3d>(parameters[0]);
-        v_WR_ECEF_1 = Eigen::Map<const Eigen::Vector3d>(parameters[1]);
-    }
-    else
-    {
-        t_WS_W = Eigen::Map<const Eigen::Vector3d>(&parameters[0][0]);
-        q_WS = Eigen::Quaterniond(parameters[0][3], parameters[0][4], parameters[0][5], parameters[0][6]);
-        q_WS.normalize();  // Normalize the quaternion to ensure it's valid
-        v_WR_ECEF_1 = Eigen::Map<const Eigen::Vector3d>(&parameters[1][0]);
-        v_WR_ECEF_2 = Eigen::Map<const Eigen::Vector3d>(&parameters[2][0]);
-        t_SR_S = Eigen::Map<const Eigen::Vector3d>(parameters[3]);
-        Eigen::Vector3d t_WR_W = t_WS_W + q_WS * t_SR_S;
-        Eigen::Vector3d v_WR_1 = v_WR_ECEF_1 + skewSymmetric(angular_velocity_) * q_WS * t_SR_S;
-        Eigen::Vector3d v_WR_2 = v_WR_ECEF_2 + skewSymmetric(angular_velocity_) * q_WS * t_SR_S;
-        if (!coordinate_)
-        {
-            LOG(FATAL) << "Coordinate not set!";
-        }
-        if (!coordinate_->isZeroSetted())
-        {
-            LOG(FATAL) << "Coordinate zero not set!";
-        }
-        t_WR_ECEF = coordinate_->convert(t_WR_W, GeoType::ENU, GeoType::ECEF);
-        v_WR_ECEF_1 = coordinate_->rotate(v_WR_1, GeoType::ENU, GeoType::ECEF);
-        v_WR_ECEF_2 = coordinate_->rotate(v_WR_2, GeoType::ENU, GeoType::ECEF);
-    }
+        t_WR_ECEF_1 = Eigen::Map<const Eigen::Vector3d>(parameters[0]);
+        t_WR_ECEF_2 = Eigen::Map<const Eigen::Vector3d>(parameters[1]);
 
-        double rho = gnss_common::satelliteToReceiverDistance(satellite_.sat_position, t_WR_ECEF);
-        Eigen::Vector3d e = (satellite_.sat_position - t_WR_ECEF) / rho;
+        double rho = gnss_common::satelliteToReceiverDistance(satellite_.sat_position, t_WR_ECEF_1);
+        Eigen::Vector3d e = (satellite_.sat_position - t_WR_ECEF_1) / rho;
         Eigen::Vector3d v_sat = satellite_.sat_velocity;
         Eigen::Vector3d p_sat = satellite_.sat_position;
-        Eigen::Vector3d vs_1 = v_sat - v_WR_ECEF_1;
-        Eigen::Vector3d vs_2 = v_sat - v_WR_ECEF_2;
 
-        double range_rate_1 = vs_1.dot(e) + OMGE / CLIGHT *
-            (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_1(0) -
-             v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_1(1));
-        double range_rate_2 = vs_2.dot(e) + OMGE / CLIGHT *
-            (v_sat(1) * t_WR_ECEF(0) + p_sat(1) * v_WR_ECEF_2(0) -
-             v_sat(0) * t_WR_ECEF(1) - p_sat(0) * v_WR_ECEF_2(1));
-        double tdcp_estimate = (range_rate_2 - range_rate_1);
+        double dist = (t_WR_ECEF_1 - t_WR_ECEF_2).norm();
+        double tdcp = abs((observation_.phaserange - observation2_.phaserange));
+        double err = tdcp - dist;
+        if (abs(err) > 0.1) err = 0.01;
+        Eigen::Matrix<double, 1, 1> error = Eigen::Matrix<double, 1, 1>(err);
 
-        double tdcp = observation_.phaserange - observation2_.phaserange;
-        Eigen::Matrix<double, 1, 1> error = Eigen::Matrix<double, 1, 1>(tdcp - tdcp_estimate);
+        LOG(INFO) << "------------------------";
+        LOG(INFO) << std::setprecision(15) << "err" << err;
+        LOG(INFO) << std::setprecision(15) << "observation_.wavelength:" << observation_.wavelength;
+        LOG(INFO) << std::setprecision(15) << "observation_.pseudorange:" << observation_.pseudorange;
+        LOG(INFO) << std::setprecision(15) << "observation_.phaserange:" << observation_.phaserange;
+        LOG(INFO) << std::setprecision(15) << "observation_.pseudorange2:" << observation2_.pseudorange;
+        LOG(INFO) << std::setprecision(15) << "observation_.phaserange2:" << observation2_.phaserange;
+        LOG(INFO) << std::setprecision(15) << "t_WR_ECEF_1:" << t_WR_ECEF_1;
+        LOG(INFO) << std::setprecision(15) << "t_WR_ECEF_2:" << t_WR_ECEF_2;
+        LOG(INFO) << std::setprecision(15) << "tdcp:" << tdcp << " dist:" << dist << " error:" << error;
+        LOG(INFO) << "------------------------";
 
-        LOG(INFO) << square_root_information_;
 
         Eigen::Map<Eigen::Matrix<double, 1, 1>> weighted_error(residuals);
         weighted_error = square_root_information_ * error;
 
         if (jacobians != nullptr) {
-            Eigen::Matrix<double, 1, 3> J_t_ECEF = Eigen::Matrix<double, 1, 3>::Zero();
-            Eigen::Matrix<double, 1, 3> J_v_ECEF_1 = -e.transpose();
-            Eigen::Matrix<double, 1, 3> J_v_ECEF_2 = e.transpose();
-
-            if (is_estimate_body_) {
-                Eigen::Matrix<double, 1, 3> J_t_W = Eigen::Matrix<double, 1, 3>::Zero();
-                Eigen::Matrix3d R_ECEF_ENU = coordinate_->rotationMatrix(GeoType::ENU, GeoType::ECEF);
-                Eigen::Matrix<double, 1, 3> J_v_W_1 = J_v_ECEF_1 * R_ECEF_ENU;
-                Eigen::Matrix<double, 1, 3> J_v_W_2 = J_v_ECEF_2 * R_ECEF_ENU;
-
-                Eigen::Matrix<double, 1, 3> J_q_WS_1 = J_v_W_1 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
-                Eigen::Matrix<double, 1, 3> J_q_WS_2 = J_v_W_2 * skewSymmetric(angular_velocity_) * -skewSymmetric(q_WS.toRotationMatrix() * t_SR_S);
-
-                Eigen::Matrix<double, 1, 6> J_T_WS;
-                J_T_WS.setZero();
-                J_T_WS.topLeftCorner(1, 3) = J_t_W;
-                J_T_WS.topRightCorner(1, 3) = J_q_WS_1 + J_q_WS_2;
-
-                Eigen::Matrix<double, 6, 7, Eigen::RowMajor> J_lift;
-                PoseLocalParameterization::liftJacobian(parameters[0], J_lift.data());
-
-
-                if (jacobians[0] != nullptr) {
-                    Eigen::Matrix<double, 1, 7> J0_minimal_full = J_T_WS * J_lift;
-                    Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J0(jacobians[0]);
-                    J0 = square_root_information_ * J0_minimal_full;
-
-
-                    if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
-                        Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
-                        J0_minimal_mapped = square_root_information_ * J_T_WS;
-                    }
-                }
-
-                if (jacobians[1] != nullptr) {
-                    Eigen::Matrix<double, 1, 7> J1_minimal_full = J_T_WS * J_lift;
-                    Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J1(jacobians[1]);
-                    J1 = square_root_information_ * J1_minimal_full;
-
-
-                    if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
-                        Eigen::Map<Eigen::Matrix<double, 1, 6, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
-                        J1_minimal_mapped = square_root_information_ * J_T_WS;
-                    }
-                }
-        }
-        else {
             if (jacobians[0] != nullptr) {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0(jacobians[0]);
-                J0 = square_root_information_ * J_t_ECEF;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[0] != nullptr) {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J0_minimal_mapped(jacobians_minimal[0]);
-                    J0_minimal_mapped = J0;
-                }
+                Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J0(jacobians[0]);
+                J0.setZero();
+                J0.block<1, 3>(0, 0) = -e.transpose(); // Set the jacobian for t_WR_ECEF
             }
-
             if (jacobians[1] != nullptr) {
-                Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1(jacobians[1]);
-                J1 = square_root_information_ * J_v_ECEF_1;
-
-                if (jacobians_minimal != nullptr && jacobians_minimal[1] != nullptr) {
-                    Eigen::Map<Eigen::Matrix<double, 1, 3, Eigen::RowMajor>> J1_minimal_mapped(jacobians_minimal[1]);
-                    J1_minimal_mapped = J1;
-                }
+                Eigen::Map<Eigen::Matrix<double, 1, 7, Eigen::RowMajor>> J1(jacobians[1]);
+                J1.setZero();
+                J1.block<1, 3>(0, 0) = - e.transpose(); // Set the jacobian for v_WR_ECEF_1
             }
-        }
     }
-
-        return true;
+    return true;
 }
-
 
 }  // namespace gici

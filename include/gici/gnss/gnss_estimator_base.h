@@ -408,6 +408,10 @@ protected:
   void eraseRelativeAmbiguityResidualBlock(
     const AmbiguityState& last_state, const AmbiguityState& cur_state);
 
+  // Erase relative troposphere residual blocks
+  void eraseTDCPResidualBlock(
+    const State& last_state, const State& cur_state);
+
   // Convert from estimated states (in ENU) to body states
   void convertStateAndCovarianceToBody(
     Transformation* T_WS, SpeedAndBias* speed_and_bias, 
