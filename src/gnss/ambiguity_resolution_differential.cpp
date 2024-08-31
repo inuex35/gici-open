@@ -193,7 +193,7 @@ AmbiguityResolution::Result AmbiguityResolution::solveRtk(
   graph_->options.minimizer_progress_to_stdout = false;
   graph_->solve();
   double range_cost = computeRangeCost(epoch_id);
-  const double tolerance = 0.1;
+  const double tolerance = 0.01;
   if (range_cost > range_cost_before + tolerance) {
     LOG(INFO) << "Invalid ambiguity resolution: Total cost changes from " 
       << std::scientific << std::setprecision(3) 

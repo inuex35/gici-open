@@ -58,6 +58,12 @@ struct GnssEstimatorBaseOptions {
   size_t diverge_min_num_continuous_reject = 10;
 };
 
+struct GnssMeasurementTriple {
+    GnssMeasurement rov;
+    GnssMeasurement heading;
+    GnssMeasurement ref;
+};
+
 // Estimator
 class GnssEstimatorBase : public virtual EstimatorBase {
 public:
@@ -547,6 +553,21 @@ protected:
     return getOldest(gnss_measurement_pairs_).first; 
   }
 
+  // Get current GNSS rover measurement
+  inline GnssMeasurement& curGnssHeading() { 
+    return getCurrent(gnss_measurement_pairs_).first; 
+  }
+
+  // Get last GNSS rover measurement
+  inline GnssMeasurement& lastGnssHeading() { 
+    return getLast(gnss_measurement_pairs_).first; 
+  }
+
+  // Get oldest GNSS rover measurement
+  inline GnssMeasurement& oldestGnssHeading() { 
+    return getOldest(gnss_measurement_pairs_).first; 
+  }
+
   // Get current GNSS reference measurement
   inline GnssMeasurement& curGnssRef() { 
     return getCurrent(gnss_measurement_pairs_).second; 
@@ -699,6 +720,7 @@ protected:
   // Measurements
   std::deque<GnssMeasurement> gnss_measurements_;
   std::deque<std::pair<GnssMeasurement, GnssMeasurement>> gnss_measurement_pairs_;
+  std::deque<GnssMeasurementTriple> gnss_measurement_triples_;
 
   // States
   std::deque<AmbiguityState> ambiguity_states_;

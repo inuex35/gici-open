@@ -101,7 +101,7 @@ bool RtkImuCameraRrrEstimator::addMeasurement(const EstimatorDataCluster& measur
     GnssMeasurement rov, ref;
     meausrement_align_.add(measurement);
     if (meausrement_align_.get(rtk_options_.max_age, rov, ref)) {
-      return addGnssMeasurementAndState(rov, ref);
+      return addTwoGnssMeasurementAndState(rov, ref);
     }
   }
 
@@ -190,11 +190,11 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
     curGnssRov(), curGnssRef(), phase_index_pairs, states_[index]);
 
   // Add tdcp residual blocks
-  if (!isFirstEpoch()) {
-    LOG(INFO) << "TDCP";
-    addTdcpResidualBlocks(
-      lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
-  }
+  //if (!isFirstEpoch()) {
+  //  LOG(INFO) << "TDCP index:" << index;
+    //addTdcpResidualBlocks(
+    //  lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
+  //}
 
   // Add doppler residual blocks
   addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
@@ -226,6 +226,123 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
   return true;
 }
 
+// Add GNSS measurements and state
+bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
+    const GnssMeasurement& measurement_rov, 
+    const GnssMeasurement& measurement_heading, 
+    const GnssMeasurement& measurement_ref)
+{
+  // Get prior states
+  Eigen::Vector3d position_prior = coordinate_->convert(
+    getPoseEstimate().getPosition(), GeoType::ENU, GeoType::ECEF);
+
+  // Set to local measurement handle
+  curGnssRov() = measurement_rov;
+  curGnssRov().position = position_prior;
+  curGnssHeading() = measurement_heading;
+  curGnssHeading().position = position_prior;
+  curGnssRef() = measurement_ref;
+  int num_valid_system = 0;
+  addClockParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_system, 
+    std::map<char, double>(), true);
+  addClockParameterBlocks(curGnssHeading(), curGnssHeading().id, num_valid_system, 
+    std::map<char, double>(), true);
+  // Erase duplicated phases, arrange to one observation per phase
+  gnss_common::rearrangePhasesAndCodes(curGnssRov());
+  gnss_common::rearrangePhasesAndCodes(curGnssHeading());
+  gnss_common::rearrangePhasesAndCodes(curGnssRef());
+
+  // Form double difference pair
+  std::map<char, std::string> system_to_base_prn;
+  GnssMeasurementDDIndexPairs phase_index_pairs = gnss_common::formPhaserangeDDPair(
+    curGnssRov(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
+  GnssMeasurementDDIndexPairs code_index_pairs = gnss_common::formPseudorangeDDPair(
+    curGnssRov(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
+
+  // Cycle-slip detection
+  if (!isFirstEpoch()) {
+    cycleSlipDetectionSD(lastGnssRov(), lastGnssRef(), 
+      curGnssRov(), curGnssRef(), gnss_base_options_.common);
+  }
+
+  // Add parameter blocks
+  double timestamp = curGnssRov().timestamp;
+  // pose and speed and bias block
+  const int32_t bundle_id = curGnssRov().id;
+  BackendId pose_id = createGnssPoseId(bundle_id);
+  size_t index = insertImuState(timestamp, pose_id);
+  states_[index].status = GnssSolutionStatus::Single;
+  latest_state_index_ = index;
+  // GNSS extrinsics, it should be added at initialization step
+
+  CHECK(gnss_extrinsics_id_.valid());
+  // ambiguity blocks
+  addSdAmbiguityParameterBlocks(curGnssRov(), 
+    curGnssRef(), phase_index_pairs, curGnssRov().id, curAmbiguityState());
+  // frequency block
+  int num_valid_doppler_system = 0;
+  addFrequencyParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_doppler_system);
+
+  // Add pseudorange residual blocks
+  int num_valid_satellite = 0;
+  addDdPseudorangeResidualBlocks(curGnssRov(), 
+    curGnssRef(), code_index_pairs, states_[index], num_valid_satellite);
+  
+  // We do not need to check if the number of satellites is sufficient in tightly fusion.
+  if (!checkSufficientSatellite(num_valid_satellite, 0)) {
+    // do nothing
+  }
+  num_satellites_ = num_valid_satellite;
+
+  // No satellite
+  if (num_satellites_ == 0) {
+    // erase parameters in current state
+    eraseFrequencyParameterBlocks(states_[index]);
+    eraseAmbiguityParameterBlocks(curAmbiguityState());
+    eraseImuState(states_[index]);
+    return false;
+  }
+
+  // Add phaserange residual blocks
+  addDdPhaserangeResidualBlocks(
+    curGnssRov(), curGnssRef(), phase_index_pairs, states_[index]);
+
+  // Add tdcp residual blocks
+  //if (!isFirstEpoch()) {
+  //  LOG(INFO) << "TDCP index:" << index;
+    //addTdcpResidualBlocks(
+    //  lastGnssRov(), curGnssRov(), states_[index-1], states_[latest_state_index_]);
+  //}
+
+  // Add doppler residual blocks
+  addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
+    false, getImuMeasurementNear(timestamp).angular_velocity);
+
+  // Add relative errors
+  if (lastGnssState().valid()) {  // maybe invalid here because of long term GNSS absent
+    // frequency
+    addRelativeFrequencyResidualBlock(lastGnssState(), states_[index]);
+    // ambiguity
+    addRelativeAmbiguityResidualBlock(
+      lastGnssRov(), curGnssRov(), lastAmbiguityState(), curAmbiguityState());
+  }
+
+  // ZUPT
+  addZUPTResidualBlock(states_[index]);
+
+  // Car motion
+  if (imu_base_options_.car_motion) {
+    // heading measurement constraint
+    addHMCResidualBlock(states_[index]);
+    // non-holonomic constraint
+    addNHCResidualBlock(states_[index]);
+  }
+
+  // Compute DOP
+  updateGdop(curGnssRov(), code_index_pairs);
+
+  return true;
+}
 
 // Add image measurements and state
 bool RtkImuCameraRrrEstimator::addImageMeasurementAndState(

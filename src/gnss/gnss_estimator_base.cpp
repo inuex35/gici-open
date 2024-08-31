@@ -979,8 +979,14 @@ void GnssEstimatorBase::addTdcpResidualBlocks(
       auto cur_state_ptr = graph_->parameterBlockPtr(cur_state.id.asInteger());
       auto last_clock_ptr = graph_->parameterBlockPtr(last_clock_ids[0].asInteger());
       auto cur_clock_ptr = graph_->parameterBlockPtr(cur_clock_ids[0].asInteger());
-      std::shared_ptr<TDCPError<3,3,1,1>> tdcp_error =
-        std::make_shared<TDCPError<3,3,1,1>>(last_measurement, cur_measurement, last_state, cur_state, gnss_base_options_.error_parameter);
+
+      std::shared_ptr<TDCPError<7,7,1,1>> tdcp_error =
+        std::make_shared<TDCPError<7,7,1,1>>(last_measurement, cur_measurement, last_state, cur_state, gnss_base_options_.error_parameter);
+  
+      tdcp_error->setCoordinate(coordinate_);
+
+      /*
+
       graph_->addResidualBlock(tdcp_error, nullptr,
         last_state_ptr,
         cur_state_ptr,
@@ -988,12 +994,14 @@ void GnssEstimatorBase::addTdcpResidualBlocks(
         cur_clock_ptr
       );
 
-      // reset initial value
-      *graph_->parameterBlockPtr(cur_state.id.asInteger())->parameters() = 
-        *graph_->parameterBlockPtr(last_state.id.asInteger())->parameters();
-      graph_->setParameterBlockVariable(cur_state.id.asInteger());
+      */
 
-      break;
+      // reset initial value
+      //*graph_->parameterBlockPtr(cur_state.id.asInteger())->parameters() = 
+      //  *graph_->parameterBlockPtr(last_state.id.asInteger())->parameters();
+      //graph_->setParameterBlockVariable(cur_state.id.asInteger());
+
+      //break;
     }
   }
 }

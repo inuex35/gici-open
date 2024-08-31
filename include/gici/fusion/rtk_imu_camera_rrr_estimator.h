@@ -68,6 +68,11 @@ protected:
     const GnssMeasurement& measurement_rov, 
     const GnssMeasurement& measurement_ref);
 
+  bool addTwoGnssMeasurementAndState(
+    const GnssMeasurement& measurement_rov, 
+    const GnssMeasurement& measurement_heading, 
+    const GnssMeasurement& measurement_ref);
+
   // Add image measurements and state
   bool addImageMeasurementAndState(const FrameBundlePtr& frame_bundle, 
     const SpeedAndBias& speed_and_bias = SpeedAndBias::Zero());

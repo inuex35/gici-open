@@ -49,7 +49,9 @@ public:
                                     double** jacobians_minimal) const;
 
   void setInformation(const GnssErrorParameter& error_parameter);
-
+  void setCoordinate(const GeoCoordinatePtr& coordinate) {
+    coordinate_ = coordinate;
+  }
   size_t residualDim() const { return kNumResiduals; }
   size_t parameterBlocks() const { return dims_.kNumParameterBlocks; }
   size_t parameterBlockDim(size_t parameter_block_idx) const
@@ -89,14 +91,15 @@ protected:
   Observation observation_;
   Satellite satellite2_;
   Observation observation2_;
+
   bool is_estimate_body_;
   int parameter_block_group_;
   GnssErrorParameter error_parameter_;
   Eigen::Vector3d angular_velocity_;
-  GeoCoordinate* coordinate_;
+  GeoCoordinatePtr coordinate_;
   covariance_t covariance_;
 };
 
-template class TDCPError<3, 3, 1, 1>;
+template class TDCPError<7, 7, 1, 1>;
 
 }  // namespace gici
