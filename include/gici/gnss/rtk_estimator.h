@@ -24,9 +24,15 @@ struct RtkEstimatorOptions {
 
   // Estimate velocity or not
   bool estimate_velocity = true;
+  
+  // Use aux ant
+  bool aux_ant = true;
 
   // Maximum age to apply difference
   double max_age = 20.0;
+
+  // Maximum age between compass to apply difference
+  double max_age_rov_heading = 0.001;
 };
 
 // Estimator

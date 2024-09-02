@@ -98,10 +98,19 @@ bool RtkImuCameraRrrEstimator::addMeasurement(const EstimatorDataCluster& measur
       ambiguity_covariance_estimator_->estimate();
     }
     // feed to local
-    GnssMeasurement rov, ref;
+    GnssMeasurement rov, ref, heading;
     meausrement_align_.add(measurement);
-    if (meausrement_align_.get(rtk_options_.max_age, rov, ref)) {
-      return addTwoGnssMeasurementAndState(rov, ref);
+    if (rtk_options_.aux_ant)
+    {
+      if (meausrement_align_.multi_ant_get(rtk_options_.max_age, rtk_options_.max_age_rov_heading, rov, ref, heading)) {
+        LOG(INFO) << "--------------";
+        return addTwoGnssMeasurementAndState(rov, ref, heading);
+      }
+    }
+    else{
+      if (meausrement_align_.get(rtk_options_.max_age, rov, ref)) {
+        return addGnssMeasurementAndState(rov, ref);
+      }
     }
   }
 
@@ -187,7 +196,7 @@ bool RtkImuCameraRrrEstimator::addGnssMeasurementAndState(
 
   // Add phaserange residual blocks
   addDdPhaserangeResidualBlocks(
-    curGnssRov(), curGnssRef(), phase_index_pairs, states_[index]);
+    curGnssRov(), curGnssRef(), phase_index_pairs, states_[index], false);
 
   // Add tdcp residual blocks
   //if (!isFirstEpoch()) {
@@ -245,8 +254,6 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   int num_valid_system = 0;
   addClockParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_system, 
     std::map<char, double>(), true);
-  addClockParameterBlocks(curGnssHeading(), curGnssHeading().id, num_valid_system, 
-    std::map<char, double>(), true);
   // Erase duplicated phases, arrange to one observation per phase
   gnss_common::rearrangePhasesAndCodes(curGnssRov());
   gnss_common::rearrangePhasesAndCodes(curGnssHeading());
@@ -258,11 +265,16 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
     curGnssRov(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
   GnssMeasurementDDIndexPairs code_index_pairs = gnss_common::formPseudorangeDDPair(
     curGnssRov(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
-
+  GnssMeasurementDDIndexPairs phase_index_pairs_heading = gnss_common::formPhaserangeDDPair(
+    curGnssHeading(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
+  GnssMeasurementDDIndexPairs code_index_pairs_heading = gnss_common::formPseudorangeDDPair(
+    curGnssHeading(), curGnssRef(), system_to_base_prn, gnss_base_options_.common);
   // Cycle-slip detection
   if (!isFirstEpoch()) {
     cycleSlipDetectionSD(lastGnssRov(), lastGnssRef(), 
       curGnssRov(), curGnssRef(), gnss_base_options_.common);
+    cycleSlipDetectionSD(lastGnssHeading(), lastGnssRef(), 
+      curGnssHeading(), curGnssRef(), gnss_base_options_.common);
   }
 
   // Add parameter blocks
@@ -274,20 +286,29 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   states_[index].status = GnssSolutionStatus::Single;
   latest_state_index_ = index;
   // GNSS extrinsics, it should be added at initialization step
+  LOG(INFO) << "-----------------------";
 
   CHECK(gnss_extrinsics_id_.valid());
   // ambiguity blocks
   addSdAmbiguityParameterBlocks(curGnssRov(), 
     curGnssRef(), phase_index_pairs, curGnssRov().id, curAmbiguityState());
+  addSdAuxAmbiguityParameterBlocks(curGnssHeading(), 
+    curGnssRef(), phase_index_pairs_heading, curGnssHeading().id, curAuxAmbiguityState());
+
   // frequency block
   int num_valid_doppler_system = 0;
   addFrequencyParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_doppler_system);
+  addFrequencyParameterBlocks(curGnssHeading(), curGnssHeading().id, num_valid_doppler_system);
 
   // Add pseudorange residual blocks
   int num_valid_satellite = 0;
   addDdPseudorangeResidualBlocks(curGnssRov(), 
     curGnssRef(), code_index_pairs, states_[index], num_valid_satellite);
-  
+  addDdPseudorangeResidualBlocks(curGnssRov(), 
+    curGnssHeading(), code_index_pairs, states_[index], num_valid_satellite);
+  //addDdPseudorangeResidualBlocks(curGnssHeading(), 
+  //  curGnssRov(), code_index_pairs, states_[index], num_valid_satellite);
+
   // We do not need to check if the number of satellites is sufficient in tightly fusion.
   if (!checkSufficientSatellite(num_valid_satellite, 0)) {
     // do nothing
@@ -299,14 +320,19 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
     // erase parameters in current state
     eraseFrequencyParameterBlocks(states_[index]);
     eraseAmbiguityParameterBlocks(curAmbiguityState());
+    eraseAmbiguityParameterBlocks(curAuxAmbiguityState());
+    //eraseAmbiguityParameterBlocks(curCompassAmbiguityState());
     eraseImuState(states_[index]);
     return false;
   }
 
   // Add phaserange residual blocks
   addDdPhaserangeResidualBlocks(
-    curGnssRov(), curGnssRef(), phase_index_pairs, states_[index]);
-
+    curGnssRov(), curGnssRef(), phase_index_pairs, states_[index], false);
+  addDdPhaserangeResidualBlocks(
+    curGnssHeading(), curGnssRef(), phase_index_pairs, states_[index], false);
+  addDdPhaserangeResidualBlocks(
+    curGnssHeading(), curGnssRov(), phase_index_pairs, states_[index], true);
   // Add tdcp residual blocks
   //if (!isFirstEpoch()) {
   //  LOG(INFO) << "TDCP index:" << index;
@@ -317,14 +343,20 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   // Add doppler residual blocks
   addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
     false, getImuMeasurementNear(timestamp).angular_velocity);
+  addDopplerResidualBlocks(curGnssHeading(), states_[index], num_valid_satellite, 
+    false, getImuMeasurementNear(timestamp).angular_velocity);
 
   // Add relative errors
   if (lastGnssState().valid()) {  // maybe invalid here because of long term GNSS absent
     // frequency
     addRelativeFrequencyResidualBlock(lastGnssState(), states_[index]);
+
     // ambiguity
     addRelativeAmbiguityResidualBlock(
       lastGnssRov(), curGnssRov(), lastAmbiguityState(), curAmbiguityState());
+
+    addRelativeAmbiguityResidualBlock(
+      curGnssHeading(), curGnssHeading(), lastAuxAmbiguityState(), curAuxAmbiguityState());
   }
 
   // ZUPT

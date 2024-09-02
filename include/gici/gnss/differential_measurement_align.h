@@ -87,13 +87,15 @@ inline bool multi_ant_get(const double max_age,
                 GnssMeasurement& ref) {
     const double offset = 0.0;  // shift a time offset for test
 
+    LOG(INFO) << "measurement_rov_.size():" << measurement_rov_.size();
+    LOG(INFO) << "measurement_heading_.size():" << measurement_heading_.size();
+    LOG(INFO) << "measurement_ref_.size():" << measurement_ref_.size();
+
     if (measurement_rov_.size() == 0) return false;
+    if (measurement_heading_.size() == 0) return false;
     if (measurement_ref_.size() == 0) {
-        measurement_rov_.clear(); return false;
-    }
-    if (measurement_heading_.size() == 0) {
-        measurement_rov_.clear();
-        measurement_ref_.clear();
+        measurement_rov_.clear(); 
+        measurement_heading_.clear();
         return false;
     }
 

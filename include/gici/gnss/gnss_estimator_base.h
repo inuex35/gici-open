@@ -187,6 +187,14 @@ protected:
     const int32_t id,
     AmbiguityState& state);
 
+  // Add single-differenced ambiguity blocks to graph
+  void addSdAuxAmbiguityParameterBlocks(
+    const GnssMeasurement& measurement_rov, 
+    const GnssMeasurement& measurement_ref, 
+    const GnssMeasurementDDIndexPairs& index_pairs,
+    const int32_t id,
+    AmbiguityState& state);
+
   // Correct code biases
   void correctCodeBias(GnssMeasurement& measurement, const bool accept_coarse = true);
 
@@ -244,7 +252,8 @@ protected:
     const GnssMeasurement& measurement_rov,
     const GnssMeasurement& measurement_ref,
     const GnssMeasurementDDIndexPairs& index_pairs,
-    const State& state);
+    const State& state,
+    bool compass = false);
 
   // Add doppler residual blocks to graph
   void addDopplerResidualBlocks(
@@ -266,6 +275,16 @@ protected:
 
   // Add ambiguity residual block to graph
   void addAmbiguityResidualBlock(
+    const BackendId& amb_id,
+    const double value, const double std);
+
+  // Add ambiguity residual block to graph
+  void addAuxAmbiguityResidualBlock(
+    const BackendId& amb_id,
+    const double value, const double std);
+
+  // Add ambiguity residual block to graph
+  void addCompassAmbiguityResidualBlock(
     const BackendId& amb_id,
     const double value, const double std);
 
@@ -608,6 +627,21 @@ protected:
     return getOldest(ambiguity_states_); 
   }
 
+  // Get current Ambiguity state
+  inline AmbiguityState& curAuxAmbiguityState() { 
+    return getCurrent(ambiguity_states_); 
+  }
+
+  // Get last Ambiguity state
+  inline AmbiguityState& lastAuxAmbiguityState() { 
+    return getLast(ambiguity_states_); 
+  }
+
+  // Get oldest Ambiguity state
+  inline AmbiguityState& oldestAuxAmbiguityState() { 
+    return getOldest(ambiguity_states_); 
+  }
+
   // Get an ambiguity state at given timestamp
   inline std::deque<AmbiguityState>::iterator 
   ambiguityStateAt(const double timestamp) { 
@@ -724,6 +758,7 @@ protected:
 
   // States
   std::deque<AmbiguityState> ambiguity_states_;
+  std::deque<AmbiguityState> aux_ambiguity_states_;
   std::deque<IonosphereState> ionosphere_states_;
   std::vector<std::pair<char, int>> ifbs_;
   int num_satellites_;

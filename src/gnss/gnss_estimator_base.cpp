@@ -1132,6 +1132,36 @@ void GnssEstimatorBase::addAmbiguityResidualBlock(
     graph_->parameterBlockPtr(amb_id.asInteger()));
 }
 
+// Add ambiguity residual block to graph
+void GnssEstimatorBase::addAuxAmbiguityResidualBlock(
+  const BackendId& amb_id,
+  const double value, const double std)
+{
+  CHECK(amb_id.type() == IdType::gAuxAmbiguity);
+  Eigen::Matrix<double, 1, 1> covariance = 
+    Eigen::Matrix<double, 1, 1>::Identity() * square(std);
+  const Eigen::Map<const Eigen::VectorXd> amb_init(&value, 1);
+  std::shared_ptr<SingleAmbiguityError> amb_error = 
+    std::make_shared<SingleAmbiguityError>(amb_init, covariance.inverse());
+  graph_->addResidualBlock(amb_error, nullptr,
+    graph_->parameterBlockPtr(amb_id.asInteger()));
+}
+
+// Add ambiguity residual block to graph
+void GnssEstimatorBase::addCompassAmbiguityResidualBlock(
+  const BackendId& amb_id,
+  const double value, const double std)
+{
+  CHECK(amb_id.type() == IdType::gCompassAmbiguity);
+  Eigen::Matrix<double, 1, 1> covariance = 
+    Eigen::Matrix<double, 1, 1>::Identity() * square(std);
+  const Eigen::Map<const Eigen::VectorXd> amb_init(&value, 1);
+  std::shared_ptr<SingleAmbiguityError> amb_error = 
+    std::make_shared<SingleAmbiguityError>(amb_init, covariance.inverse());
+  graph_->addResidualBlock(amb_error, nullptr,
+    graph_->parameterBlockPtr(amb_id.asInteger()));
+}
+
 // Add relative position block to graph
 void GnssEstimatorBase::addRelativePositionResidualBlock(
   const State& last_state, const State& cur_state)

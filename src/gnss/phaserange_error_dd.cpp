@@ -23,7 +23,9 @@ PhaserangeErrorDD<Ns ...>::PhaserangeErrorDD(
                     const GnssMeasurementIndex index_ref,
                     const GnssMeasurementIndex index_rov_base,
                     const GnssMeasurementIndex index_ref_base,
-                    const GnssErrorParameter& error_parameter)
+                    const GnssErrorParameter& error_parameter,
+                    bool compass = false
+                    )
 {
   CHECK(!checkZero(measurement_ref.position)) << 
     "The position of reference station is not setted!";

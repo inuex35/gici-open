@@ -193,6 +193,117 @@ void GnssEstimatorBase::addSdAmbiguityParameterBlocks(
   }
 }
 
+
+// Add ambiguity blocks to graph
+void GnssEstimatorBase::addSdAuxAmbiguityParameterBlocks(
+  const GnssMeasurement& measurement_rov, 
+  const GnssMeasurement& measurement_ref, 
+  const GnssMeasurementDDIndexPairs& index_pairs,
+  const int32_t id,
+  AmbiguityState& state)
+{
+  state.clear();
+  state.timestamp = measurement_rov.timestamp;
+
+  for (auto index_pair : index_pairs) 
+  {
+    const Satellite& satellite = 
+      measurement_rov.getSat(index_pair.rov);
+    const Satellite& satellite_base = 
+      measurement_rov.getSat(index_pair.rov_base);
+    const Satellite& satellite_ref = 
+      measurement_ref.getSat(index_pair.ref);
+    const Satellite& satellite_ref_base = 
+      measurement_ref.getSat(index_pair.ref_base);
+    const Observation& observation = 
+      satellite.observations.at(index_pair.rov.code_type);
+    const Observation& observation_base = 
+      satellite_base.observations.at(index_pair.rov_base.code_type);
+    const Observation& observation_ref = 
+      satellite_ref.observations.at(index_pair.ref.code_type);
+    const Observation& observation_ref_base = 
+      satellite_ref_base.observations.at(index_pair.ref_base.code_type);
+    char system = satellite.getSystem();
+    std::vector<Observation> observations_frequency;
+
+    // add ambiguity parameter block
+    double code = index_pair.rov.code_type;
+    double wavelength = observation.wavelength;
+    double phase_id = gnss_common::getPhaseID(system, code);
+    BackendId ambiguity_id = createGnssAuxAmbiguityId(satellite.prn, phase_id, id);
+    CHECK(!graph_->parameterBlockExists(ambiguity_id.asInteger())) 
+      << "Ambiguity parameter for " << satellite.prn << " in phase " 
+      << phase_id << " has already been added!";
+
+    // compute initial ambiguity state
+    double phaserange = observation.phaserange;
+    double pseudorange = observation.pseudorange;
+    double phaserange_ref = observation_ref.phaserange;
+    double pseudorange_ref = observation_ref.pseudorange;
+    double ambiguity = phaserange - phaserange_ref - 
+                      (pseudorange - pseudorange_ref);
+
+    Eigen::Matrix<double, 1, 1> init;
+    init[0] = ambiguity;
+    std::shared_ptr<AmbiguityParameterBlock> ambiguity_parameter_block = 
+      std::make_shared<AmbiguityParameterBlock>(init, ambiguity_id.asInteger());
+    CHECK(graph_->addParameterBlock(ambiguity_parameter_block));
+    state.ids.push_back(ambiguity_id);
+
+    // add ambiguity parameter block for base satellite
+    BackendId ambiguity_base_id = 
+      createGnssAmbiguityId(satellite_base.prn, phase_id, id);
+    if (!graph_->parameterBlockExists(ambiguity_base_id.asInteger())) 
+    {
+      phaserange = observation_base.phaserange;
+      pseudorange = observation_base.pseudorange;
+      phaserange_ref = observation_ref_base.phaserange;
+      pseudorange_ref = observation_ref_base.pseudorange;
+      ambiguity = phaserange - phaserange_ref - 
+                        (pseudorange - pseudorange_ref);
+      Eigen::Matrix<double, 1, 1> init_base;
+      init_base[0] = ambiguity;
+      std::shared_ptr<AmbiguityParameterBlock> ambiguity_base_parameter_block = 
+        std::make_shared<AmbiguityParameterBlock>(
+          init_base, ambiguity_base_id.asInteger());
+      CHECK(graph_->addParameterBlock(ambiguity_base_parameter_block));
+      state.ids.push_back(ambiguity_base_id);
+
+      // add initial prior measurement
+      addAuxAmbiguityResidualBlock(ambiguity_base_id, init_base[0], 
+        gnss_base_options_.error_parameter.initial_ambiguity);
+    }
+
+    // add initial prior measurement
+    bool has_last = false;
+    if (ambiguity_states_.size() > 1)
+    for (size_t j = 0; j < lastAmbiguityState().ids.size(); j++) {
+      if (!sameAmbiguity(lastAmbiguityState().ids[j], ambiguity_id)) continue;
+
+      // check cycle slip
+      std::string prn = ambiguity_id.gPrn();
+      int phase_id = ambiguity_id.gPhaseId();
+      bool slip = false;
+
+      for (auto obs : satellite.observations) {
+        if (gnss_common::getPhaseID(satellite.getSystem(), obs.first) == phase_id) {
+          slip = obs.second.slip;
+        }
+      }
+      // if slip happened, we do not add ambiguity time constraint
+      if (slip) continue;
+
+      has_last = true;
+      break;
+    }
+    if (!has_last) {
+      addAuxAmbiguityResidualBlock(ambiguity_id, 
+        *graph_->parameterBlockPtr(ambiguity_id.asInteger())->parameters(), 
+        gnss_base_options_.error_parameter.initial_ambiguity);
+    }
+  }
+}
+
 // Add single-differenced pseudorange residual block to graph
 void GnssEstimatorBase::addSdPseudorangeResidualBlocks(
   const GnssMeasurement& measurement_rov,
@@ -346,7 +457,8 @@ void GnssEstimatorBase::addDdPhaserangeResidualBlocks(
   const GnssMeasurement& measurement_rov,
   const GnssMeasurement& measurement_ref,
   const GnssMeasurementDDIndexPairs& index_pairs,
-  const State& state)
+  const State& state,
+  bool compass)
 {
   const BackendId parameter_id = state.id;
 
@@ -377,7 +489,7 @@ void GnssEstimatorBase::addDdPhaserangeResidualBlocks(
           std::make_shared<PhaserangeErrorDD<3, 1, 1>>(
           measurement_rov, measurement_ref, 
           index_pair.rov, index_pair.ref, index_pair.rov_base, index_pair.ref_base,
-          gnss_base_options_.error_parameter);
+          gnss_base_options_.error_parameter, false);
         graph_->addResidualBlock(phaserange_error, 
           huber_loss_function_ ? huber_loss_function_.get() : nullptr,
           graph_->parameterBlockPtr(parameter_id.asInteger()), 
@@ -392,7 +504,7 @@ void GnssEstimatorBase::addDdPhaserangeResidualBlocks(
           std::make_shared<PhaserangeErrorDD<7, 3, 1, 1>>(
           measurement_rov, measurement_ref, 
           index_pair.rov, index_pair.ref, index_pair.rov_base, index_pair.ref_base,
-          gnss_base_options_.error_parameter); 
+          gnss_base_options_.error_parameter, false); 
         phaserange_error->setCoordinate(coordinate_);
         graph_->addResidualBlock(phaserange_error, 
           huber_loss_function_ ? huber_loss_function_.get() : nullptr,

@@ -47,8 +47,10 @@ enum class IdType : uint8_t
   gTroposphere = 9,
   gExtrinsics = 10,
   gAmbiguity = 11,
-  gIonosphere = 12,
-  gIfb = 13
+  gAuxAmbiguity = 12,
+  gCompassAmbiguity = 13,
+  gIonosphere = 14,
+  gIfb = 15
 };
 
 using SensorType = option_tools::SensorType;
@@ -135,7 +137,8 @@ public:
     if (type == IdType::cPose || type == IdType::cExtrinsics || 
         type == IdType::cLandmark) return SensorType::Camera;
     if (type == IdType::ImuStates) return SensorType::IMU;
-    if (type == IdType::gAmbiguity || type == IdType::gClock || 
+    if (type == IdType::gAmbiguity || type == IdType::gAuxAmbiguity ||
+        type == IdType::gCompassAmbiguity || type == IdType::gClock || 
         type == IdType::gExtrinsics || type == IdType::gFrequency ||
         type == IdType::gIonosphere || type == IdType::gPose || 
         type == IdType::gPosition || type == IdType::gTroposphere ||
@@ -291,6 +294,38 @@ inline BackendId createGnssAmbiguityId(std::string prn,
     BackendId::setBits(IdType::gAmbiguity, BITS_IDTYPE));
 }
 
+inline BackendId createGnssAuxAmbiguityId(std::string prn,
+                  int phase_id, int32_t bundle_id)
+{
+  CHECK_GE(bundle_id, 0);
+  CHECK_GE(phase_id, 0);
+  char system = prn[0];
+  int prn_number = atoi(prn.substr(1, 2).data());
+  return BackendId(
+    BackendId::setBits(BackendId::adjustBundleId(
+      bundle_id, IdType::gAmbiguity), BITS_BUNDLEID) |
+    BackendId::setBits(system, BITS_GNSS_SYSTEM) |
+    BackendId::setBits(prn_number, BITS_GNSS_PRN) |
+    BackendId::setBits(phase_id, BITS_GNSS_PHASEID) |
+    BackendId::setBits(IdType::gAuxAmbiguity, BITS_IDTYPE));
+}
+
+inline BackendId createGnssCompassAmbiguityId(std::string prn,
+                  int phase_id, int32_t bundle_id)
+{
+  CHECK_GE(bundle_id, 0);
+  CHECK_GE(phase_id, 0);
+  char system = prn[0];
+  int prn_number = atoi(prn.substr(1, 2).data());
+  return BackendId(
+    BackendId::setBits(BackendId::adjustBundleId(
+      bundle_id, IdType::gAmbiguity), BITS_BUNDLEID) |
+    BackendId::setBits(system, BITS_GNSS_SYSTEM) |
+    BackendId::setBits(prn_number, BITS_GNSS_PRN) |
+    BackendId::setBits(phase_id, BITS_GNSS_PHASEID) |
+    BackendId::setBits(IdType::gCompassAmbiguity, BITS_IDTYPE));
+}
+
 inline BackendId createGnssTroposphereId(int32_t bundle_id)
 {
   CHECK_GE(bundle_id, 0);
@@ -364,8 +399,7 @@ inline BackendId changeIdType(BackendId id, IdType type, const char system)
 
 inline bool sameAmbiguity(const BackendId& lhs, const BackendId& rhs)
 {
-  CHECK(BackendId::getBits(lhs.asInteger(), BITS_IDTYPE) == 
-        static_cast<uint32_t>(IdType::gAmbiguity));
+  CHECK(BackendId::getBits(lhs.asInteger(), BITS_IDTYPE) ==  static_cast<uint32_t>(IdType::gAmbiguity) || BackendId::getBits(lhs.asInteger(), BITS_IDTYPE) == static_cast<uint32_t>(IdType::gAuxAmbiguity) || BackendId::getBits(lhs.asInteger(), BITS_IDTYPE) == static_cast<uint32_t>(IdType::gCompassAmbiguity));
   CHECK(BackendId::getBits(rhs.asInteger(), BITS_IDTYPE) == 
         static_cast<uint32_t>(IdType::gAmbiguity));
   
