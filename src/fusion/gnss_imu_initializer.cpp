@@ -372,7 +372,12 @@ void GnssImuInitializer::putMeasurementAndStateToGraph(
       gnss_extrinsics_id_ = 
         addGnssExtrinsicsParameterBlock(gnss.id, options_.gnss_extrinsics);
     }
-    
+
+    if (!aux_gnss_extrinsics_id_.valid()) {
+      aux_gnss_extrinsics_id_ = 
+        addAuxGnssExtrinsicsParameterBlock(gnss.id, options_.aux_gnss_extrinsics);
+    }
+
     // Add residual blocks
     // GNSS position
     if (gnss.status != GnssSolutionStatus::Fixed) {

@@ -26,7 +26,7 @@ struct RtkEstimatorOptions {
   bool estimate_velocity = true;
   
   // Use aux ant
-  bool aux_ant = true;
+  bool aux_ant = false;
 
   // Maximum age to apply difference
   double max_age = 20.0;

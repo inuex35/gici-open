@@ -75,6 +75,7 @@ void StreamerBase::syncStreams()
       max_size = size; master_index = i;
     }
   } 
+
   if (master_index == -1) {
     LOG(ERROR) << "File synchronization error!";
     return;

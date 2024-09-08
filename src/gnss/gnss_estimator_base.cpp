@@ -73,6 +73,20 @@ BackendId GnssEstimatorBase::addGnssExtrinsicsParameterBlock(
   return gnss_extrinsics_id;
 }
 
+// Add GNSS extrinsics block to graph
+BackendId GnssEstimatorBase::addAuxGnssExtrinsicsParameterBlock(
+  const int32_t id, 
+  const Eigen::Vector3d& t_SR_S_prior)
+{
+  BackendId pose_id = createGnssPoseId(id);
+  BackendId aux_gnss_extrinsics_id = changeIdType(pose_id, IdType::gExtrinsics);
+  std::shared_ptr<PositionParameterBlock> aux_gnss_extrinsic_parameter_block = 
+    std::make_shared<PositionParameterBlock>(
+      t_SR_S_prior, aux_gnss_extrinsics_id.asInteger());
+  CHECK(graph_->addParameterBlock(aux_gnss_extrinsic_parameter_block));
+  return aux_gnss_extrinsics_id;
+}
+
 // Add GNSS clock blocks to graph
 void GnssEstimatorBase::addClockParameterBlocks(
   const GnssMeasurement& measurement, 

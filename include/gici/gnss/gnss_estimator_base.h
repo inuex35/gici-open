@@ -131,6 +131,11 @@ protected:
     const int32_t id, 
     const Eigen::Vector3d& t_SR_S_prior);
 
+  // Add GNSS extrinsics block to graph
+  BackendId addAuxGnssExtrinsicsParameterBlock(
+    const int32_t id, 
+    const Eigen::Vector3d& t_SR_S_prior);
+
   // Add clock blocks to graph
   void addClockParameterBlocks(
     const GnssMeasurement& measurement, 
@@ -766,6 +771,7 @@ protected:
   double gdop_;
   static int32_t solution_id;
   BackendId gnss_extrinsics_id_;
+  BackendId aux_gnss_extrinsics_id_;
 
   // Ambiguity resolution
   std::unique_ptr<AmbiguityResolution> ambiguity_resolution_;

@@ -276,7 +276,7 @@ void GnssEstimatorBase::addSdAuxAmbiguityParameterBlocks(
 
     // add initial prior measurement
     bool has_last = false;
-    if (ambiguity_states_.size() > 1)
+    if (aux_ambiguity_states_.size() > 1)
     for (size_t j = 0; j < lastAmbiguityState().ids.size(); j++) {
       if (!sameAmbiguity(lastAmbiguityState().ids[j], ambiguity_id)) continue;
 

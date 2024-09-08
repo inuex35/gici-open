@@ -149,6 +149,18 @@ bool PhaserangeErrorDD<Ns ...>::EvaluateWithMinimalJacobians(
     // receiver position
     Eigen::Vector3d t_WR_W = t_WS_W + q_WS * t_SR_S;
 
+    // t_WS_W (ローバーの位置) をプリント
+    LOG(INFO) << "t_WS_W (Rover position in ENU): " << t_WS_W.transpose() << std::endl;
+    
+    // q_WS (ローバーの姿勢: クォータニオン) をプリント
+    LOG(INFO) << "q_WS (Rover orientation in ENU, quaternion): " << q_WS.coeffs().transpose() << std::endl;
+
+    // t_SR_S (相対位置) をプリント
+    LOG(INFO) << "t_SR_S (Relative position in sensor frame): " << t_SR_S.transpose() << std::endl;
+
+    // t_WR_W (受信機の位置) をプリント
+    LOG(INFO) << "t_WR_W (Receiver position in world frame): " << t_WR_W.transpose() << std::endl;
+
     // ambiguity
     dambiguity = parameters[2][0];
     dambiguity_base = parameters[3][0];

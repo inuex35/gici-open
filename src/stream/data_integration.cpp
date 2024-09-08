@@ -235,6 +235,7 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
       case SYS_GLO: satellite.prn = 'R'; break;
       case SYS_GAL: satellite.prn = 'E'; break;
       case SYS_CMP: satellite.prn = 'C'; break;
+      //case SYS_QZS: satellite.prn = 'J'; break;
       default: continue;
     }
     sprintf(strprnnum, "%02d", prn);
@@ -295,7 +296,7 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
   // check if we should wait for more ephemeris
   double invalid_ephemeris_ratio = 
     getDivide(num_invalid_ephemeris, num_invalid_ephemeris + num_valid_ephemeris);
-  if (invalid_ephemeris_ratio > 0.2) {
+  if (invalid_ephemeris_ratio > 0.5) {
     LOG(INFO) << "Waiting for ephemeris. We still have " << num_invalid_ephemeris
       << " satellites that do not have ephemeris. Total number of satellite is "
       << num_invalid_ephemeris + num_valid_ephemeris;

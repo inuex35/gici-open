@@ -38,9 +38,11 @@ struct GnssImuInitializerOptions {
 
   // Relative position from IMU to GNSS in IMU frame
   Eigen::Vector3d gnss_extrinsics = Eigen::Vector3d::Zero();
+  Eigen::Vector3d aux_gnss_extrinsics = Eigen::Vector3d::Zero();
 
   // GNSS extrinsics initial variance
   Eigen::Vector3d gnss_extrinsics_initial_std = Eigen::Vector3d::Zero();
+  Eigen::Vector3d aux_gnss_extrinsics_initial_std = Eigen::Vector3d::Zero();
 };
 
 // Estimator

@@ -102,8 +102,8 @@ bool RtkImuCameraRrrEstimator::addMeasurement(const EstimatorDataCluster& measur
     meausrement_align_.add(measurement);
     if (rtk_options_.aux_ant)
     {
+      LOG(INFO) << "rtk_options_.aux_ant:" << rtk_options_.aux_ant;
       if (meausrement_align_.multi_ant_get(rtk_options_.max_age, rtk_options_.max_age_rov_heading, rov, ref, heading)) {
-        LOG(INFO) << "--------------";
         return addTwoGnssMeasurementAndState(rov, ref, heading);
       }
     }
@@ -286,7 +286,6 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   states_[index].status = GnssSolutionStatus::Single;
   latest_state_index_ = index;
   // GNSS extrinsics, it should be added at initialization step
-  LOG(INFO) << "-----------------------";
 
   CHECK(gnss_extrinsics_id_.valid());
   // ambiguity blocks
@@ -306,8 +305,8 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
     curGnssRef(), code_index_pairs, states_[index], num_valid_satellite);
   addDdPseudorangeResidualBlocks(curGnssRov(), 
     curGnssHeading(), code_index_pairs, states_[index], num_valid_satellite);
-  //addDdPseudorangeResidualBlocks(curGnssHeading(), 
-  //  curGnssRov(), code_index_pairs, states_[index], num_valid_satellite);
+  addDdPseudorangeResidualBlocks(curGnssHeading(), 
+    curGnssRov(), code_index_pairs, states_[index], num_valid_satellite);
 
   // We do not need to check if the number of satellites is sufficient in tightly fusion.
   if (!checkSufficientSatellite(num_valid_satellite, 0)) {
@@ -343,8 +342,8 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   // Add doppler residual blocks
   addDopplerResidualBlocks(curGnssRov(), states_[index], num_valid_satellite, 
     false, getImuMeasurementNear(timestamp).angular_velocity);
-  addDopplerResidualBlocks(curGnssHeading(), states_[index], num_valid_satellite, 
-    false, getImuMeasurementNear(timestamp).angular_velocity);
+  //addDopplerResidualBlocks(curGnssHeading(), states_[index], num_valid_satellite, 
+  //  false, getImuMeasurementNear(timestamp).angular_velocity);
 
   // Add relative errors
   if (lastGnssState().valid()) {  // maybe invalid here because of long term GNSS absent
@@ -355,8 +354,8 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
     addRelativeAmbiguityResidualBlock(
       lastGnssRov(), curGnssRov(), lastAmbiguityState(), curAmbiguityState());
 
-    addRelativeAmbiguityResidualBlock(
-      curGnssHeading(), curGnssHeading(), lastAuxAmbiguityState(), curAuxAmbiguityState());
+    //addRelativeAmbiguityResidualBlock(
+    //  curGnssHeading(), curGnssHeading(), lastAuxAmbiguityState(), curAuxAmbiguityState());
   }
 
   // ZUPT

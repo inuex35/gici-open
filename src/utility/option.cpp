@@ -816,6 +816,7 @@ void loadOptions<GnssImuInitializerOptions>(
   LOAD_COMMON(min_acceleration);
 
   std::vector<double> gnss_extrinsics;
+  std::vector<double> aux_gnss_extrinsics;
   if (option_tools::safeGet(node, "gnss_extrinsics", 
       &gnss_extrinsics) && 
       gnss_extrinsics.size() == 3) {
@@ -827,7 +828,19 @@ void loadOptions<GnssImuInitializerOptions>(
     LOG(INFO) << "Unable to load gnss_extrinsics. Using default instead.";
   }
 
+  if (option_tools::safeGet(node, "aux_gnss_extrinsics", 
+      &aux_gnss_extrinsics) && 
+      aux_gnss_extrinsics.size() == 3) {
+    for (size_t i = 0; i < 3; i++) {
+      options.aux_gnss_extrinsics[i] = aux_gnss_extrinsics[i];
+    }
+  }
+  else {
+    LOG(INFO) << "Unable to load aux_gnss_extrinsics. Using default instead.";
+  }
+
   std::vector<double> gnss_extrinsics_initial_std;
+  std::vector<double> aux_gnss_extrinsics_initial_std;
   if (option_tools::safeGet(node, "gnss_extrinsics_initial_std", 
       &gnss_extrinsics_initial_std) && 
       gnss_extrinsics_initial_std.size() == 3) {
@@ -837,7 +850,17 @@ void loadOptions<GnssImuInitializerOptions>(
   }
   else {
     LOG(INFO) << "Unable to load gnss_extrinsics_initial_std. Using default instead.";
-  } 
+  }
+  if (option_tools::safeGet(node, "aux_gnss_extrinsics_initial_std", 
+      &aux_gnss_extrinsics_initial_std) && 
+      aux_gnss_extrinsics_initial_std.size() == 3) {
+    for (size_t i = 0; i < 3; i++) {
+      options.aux_gnss_extrinsics_initial_std[i] = aux_gnss_extrinsics_initial_std[i];
+    }
+  }
+  else {
+    LOG(INFO) << "Unable to load gnss_extrinsics_initial_std. Using default instead.";
+  }
 }
 
 template <>

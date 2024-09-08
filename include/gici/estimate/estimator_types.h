@@ -46,11 +46,12 @@ enum class IdType : uint8_t
   gFrequency = 8,
   gTroposphere = 9,
   gExtrinsics = 10,
-  gAmbiguity = 11,
-  gAuxAmbiguity = 12,
-  gCompassAmbiguity = 13,
-  gIonosphere = 14,
-  gIfb = 15
+  gAuxExtrinsics = 11,
+  gAmbiguity = 12,
+  gAuxAmbiguity = 13,
+  gCompassAmbiguity = 14,
+  gIonosphere = 15,
+  gIfb = 16
 };
 
 using SensorType = option_tools::SensorType;
@@ -140,9 +141,10 @@ public:
     if (type == IdType::gAmbiguity || type == IdType::gAuxAmbiguity ||
         type == IdType::gCompassAmbiguity || type == IdType::gClock || 
         type == IdType::gExtrinsics || type == IdType::gFrequency ||
-        type == IdType::gIonosphere || type == IdType::gPose || 
-        type == IdType::gPosition || type == IdType::gTroposphere ||
-        type == IdType::gVelocity || type == IdType::gIfb) 
+        type == IdType::gAuxExtrinsics || type == IdType::gIonosphere ||
+        type == IdType::gPose || type == IdType::gPosition || 
+        type == IdType::gTroposphere || type == IdType::gVelocity || 
+        type == IdType::gIfb) 
       return SensorType::GNSS;
     return SensorType::None;
   }
@@ -370,7 +372,7 @@ inline BackendId changeIdType(BackendId id, IdType type, size_t cam_index = 0)
   CHECK(id.type() != IdType::cLandmark);
   CHECK(type != IdType::cLandmark);
   CHECK(cam_index == 0 || type == IdType::cExtrinsics || type == IdType::gVelocity ||
-        type == IdType::gExtrinsics || type == IdType::gTroposphere);
+        type == IdType::gExtrinsics || type == IdType::gAuxExtrinsics || type == IdType::gTroposphere);
   CHECK((BackendId::sensorType(id.type()) == BackendId::sensorType(type)) || 
         (BackendId::sensorType(type) == SensorType::IMU));
   uint64_t out = id.asInteger();

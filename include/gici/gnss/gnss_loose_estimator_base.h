@@ -69,6 +69,11 @@ protected:
     const int32_t id, 
     const Eigen::Vector3d& t_SR_S_prior);
 
+  // Add GNSS extrinsics block to graph
+  BackendId addAuxGnssExtrinsicsParameterBlock(
+    const int32_t id, 
+    const Eigen::Vector3d& t_SR_S_prior);
+
   // Add position block to graph
   void addGnssPositionResidualBlock(
     const GnssSolution& measurement,
@@ -148,6 +153,8 @@ protected:
 
   // States
   BackendId gnss_extrinsics_id_;
+  BackendId aux_gnss_extrinsics_id_;
+
 };
 
 }
