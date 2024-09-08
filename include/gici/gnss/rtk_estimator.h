@@ -32,7 +32,7 @@ struct RtkEstimatorOptions {
   double max_age = 20.0;
 
   // Maximum age between compass to apply difference
-  double max_age_rov_heading = 0.001;
+  double max_age_rov_heading = 0.01;
 };
 
 // Estimator
