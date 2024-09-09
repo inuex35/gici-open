@@ -25,7 +25,8 @@ enum class TgdIscType {
   GalileoBgdE1E5a,
   GalileoBgdE1E5b,
   BdsTgdB1B3,
-  BdsTgdB2B3
+  BdsTgdB2B3,
+  QzssTgdL1L6
 };
 
 // Code bias handle

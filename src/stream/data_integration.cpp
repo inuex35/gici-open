@@ -65,6 +65,7 @@ GnssDataIntegration::GnssDataIntegration(
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L2I, CODE_L6I)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_L6L)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // broadcast ephemeris base
@@ -74,6 +75,7 @@ GnssDataIntegration::GnssDataIntegration(
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L6I, CODE_NONE)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_L6L)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // phase bias handle
@@ -235,7 +237,7 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
       case SYS_GLO: satellite.prn = 'R'; break;
       case SYS_GAL: satellite.prn = 'E'; break;
       case SYS_CMP: satellite.prn = 'C'; break;
-      //case SYS_QZS: satellite.prn = 'J'; break;
+      case SYS_QZS: satellite.prn = 'J'; break;
       default: continue;
     }
     sprintf(strprnnum, "%02d", prn);
@@ -400,6 +402,11 @@ void GnssDataIntegration::updateTgd()
     if (prn[0] == 'G') {
       if (eph->tgd[0] != 0.0) {
         code_bias_local_->setTgdIsc(prn, TgdIscType::GpsTgd, eph->tgd[0]);
+      }
+    }
+    else if (prn[0] == 'J') {
+      if (eph->tgd[0] != 0.0) {
+        code_bias_local_->setTgdIsc(prn, TgdIscType::QzssTgdL1L6, eph->tgd[0]);
       }
     }
     else if (prn[0] == 'E') {

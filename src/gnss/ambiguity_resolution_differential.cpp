@@ -114,11 +114,13 @@ AmbiguityResolution::Result AmbiguityResolution::solveRtk(
 
   // Collect all parameter blocks
   Graph::ParameterBlockCollection parameters = graph_->parameters();
+
   for (size_t p = 0; p < parameters.size(); p++) {
     Parameter parameter;
     parameter.id = BackendId(parameters[p].first);
     parameter.size = parameters[p].second->dimension();
     parameter.minimal_size = parameters[p].second->minimalDimension();
+
     parameter.value = Eigen::Map<Eigen::VectorXd>(
       parameters[p].second->parameters(), parameter.size);
     parameter.handle = parameters[p].second;

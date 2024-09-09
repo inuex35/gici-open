@@ -91,7 +91,7 @@ void writeRosbag(const std::shared_ptr<DataCluster> data_cluster,
         satno2id(obs->sat, prn_buf);
         o.prn = prn_buf;
         const char system = o.prn[0];
-        if (system != 'G' && system != 'R' && system != 'E' && system != 'C') continue;
+        if (system != 'G' && system != 'R' && system != 'E' && system != 'C' && system != 'J') continue;
         for (int j = 0; j < NFREQ+NEXOBS; j++) {
           if (obs->code[j] == CODE_NONE) continue;
           o.SNR.push_back(obs->SNR[j]);
@@ -224,7 +224,7 @@ void writeRosbag(const std::shared_ptr<DataCluster> data_cluster,
         b.udi = ssr->udi[4];
         b.isdcb = ssr->isdcb;
         const char system = b.prn[0];
-        if (system != 'G' && system != 'R' && system != 'E' && system != 'C') continue;
+        if (system != 'G' && system != 'R' && system != 'E' && system != 'C' && system != 'J') continue;
         for (int j = 0; j < MAXCODE; j++) {
           if (ssr->cbias[j] == 0.0) continue;
           b.code.push_back(gnss_common::codeTypeToRinexType(b.prn[0], j + 1));
@@ -253,7 +253,7 @@ void writeRosbag(const std::shared_ptr<DataCluster> data_cluster,
         b.udi = ssr->udi[4];
         b.isdpb = ssr->isdpb;
         const char system = b.prn[0];
-        if (system != 'G' && system != 'R' && system != 'E' && system != 'C') continue;
+        if (system != 'G' && system != 'R' && system != 'E' && system != 'C' && system != 'J') continue;
         for (int j = 0; j < MAXCODE; j++) {
           if (ssr->pbias[j] == 0.0) continue;
           int phase = gnss_common::getPhaseID(b.prn[0], j + 1);

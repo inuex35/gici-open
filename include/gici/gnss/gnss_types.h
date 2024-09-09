@@ -296,7 +296,7 @@ struct GnssErrorParameter {
 
   // System error ratio
   std::map<char, double> system_error_ratio = 
-    {{'G', 1.0}, {'R', 5.0}, {'C', 2.0}, {'E', 1.5}};
+    {{'G', 1.0}, {'R', 5.0}, {'C', 2.0}, {'E', 1.5}, {'J', 1.0}};
 
   // Ionosphere model error factor
   double ionosphere_broadcast_factor = 0.5;

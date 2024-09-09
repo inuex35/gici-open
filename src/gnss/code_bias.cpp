@@ -32,6 +32,9 @@ void CodeBias::setDefaultBase()
   if (bases_.find('C') == bases_.end()) {
     bases_.insert(std::make_pair('C', std::make_pair(CODE_L6I, CODE_NONE)));
   }
+  if (bases_.find('J') == bases_.end()) {
+    bases_.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_L6I)));
+  }
   mutex_.unlock();
 }
 
@@ -194,6 +197,27 @@ void CodeBias::setDefaultDcbs()
   default_dcbs_.insert(std::make_pair("Cxx", default_dcb));
   default_dcb.code2 = CODE_L6X;
   default_dcbs_.insert(std::make_pair("Cxx", default_dcb));
+
+  // QZSS L1
+  default_dcb.code1 = CODE_L1C;
+  default_dcb.code2 = CODE_L1X;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  default_dcb.code2 = CODE_L1Z;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+
+  // QZSS L2
+  default_dcb.code1 = CODE_L2X;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+
+  // QZSS L5
+  default_dcb.code1 = CODE_L5I;
+  default_dcb.code2 = CODE_L5Q;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  
+  default_dcb.code1 = CODE_L6I;
+  default_dcb.code2 = CODE_L6Q;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+
   mutex_.unlock();
 }
 
@@ -463,6 +487,12 @@ void CodeBias::arrangeAllSourceDcbs(
           H(dcbs.size(), j) = c2; found_second = true;
         }
       }
+
+      if (base.first == CODE_L6I || base.first == CODE_L6L || 
+          base.second == CODE_L6I || base.second == CODE_L6L) {
+        LOG(INFO) << "Skipping L6 base code processing for " << prn;
+        continue;
+      }
       if (!found_first) {
         LOG(INFO) << "Input DCBs for " << prn << " does not contain base code " 
           << gnss_common::codeTypeToRinexType(prn[0], base.first) << "!";
@@ -493,6 +523,7 @@ void CodeBias::arrangeAllSourceDcbs(
       }
       biases.at(prn).insert(std::make_pair(codes[i], x(i)));
     }
+
   }
 }
 
@@ -631,6 +662,14 @@ void CodeBias::putTgdsToAllSourceDcbs()
       dcb.code2 = CODE_L6I;
       dcb.value = tgd.value;
     }
+    else if (tgd.type == TgdIscType::QzssTgdL1L6) {
+      dcb.code1 = CODE_L1C;
+      dcb.code2 = CODE_L6I;
+      double f1 = gnss_common::codeToFrequency(prn[0], dcb.code1);
+      double f2 = gnss_common::codeToFrequency(prn[0], dcb.code2);
+      dcb.value = tgd.value * (1 - square(f1 / f2));
+    }
+    
     dcb.std = 0.3;
 
     all_source_dcbs_coarse_.insert(std::make_pair(prn, dcb));
