@@ -225,10 +225,7 @@
   MAP('J', CODE_L2X, PHASE_L2); /* QZSS L2X */ \
   MAP('J', CODE_L5I, PHASE_L5); /* QZSS L5I */ \
   MAP('J', CODE_L5Q, PHASE_L5); /* QZSS L5Q */ \
-  MAP('J', CODE_L5X, PHASE_L5); /* QZSS L5X */ \
-  MAP('J', CODE_L6L, PHASE_L6); /* QZSS L6L */ \
-  MAP('J', CODE_L6X, PHASE_L6); /* QZSS L6X */ \
-  MAP('J', CODE_L6E, PHASE_L6); /* QZSS L6E */
+  MAP('J', CODE_L5X, PHASE_L5); /* QZSS L5X */
   
 // Phase channel to default code 
 #define PHASE_CHANNEL_TO_DEFAULT_CODE \
@@ -256,8 +253,7 @@
   MAP('C', PHASE_B3A, CODE_L6Z); \
   MAP('J', PHASE_L1, CODE_L1C); \
   MAP('J', PHASE_L2, CODE_L2X); \
-  MAP('J', PHASE_L5, CODE_L5X); \
-  MAP('J', PHASE_L6, CODE_L6X);
+  MAP('J', PHASE_L5, CODE_L5X);
 
 // Phase channel to phase frequency maps
 #define PHASE_CHANNEL_TO_FREQUENCY_MAPS \
@@ -286,8 +282,7 @@
   MAP('C', PHASE_B3A, FREQ3_CMP); \
   MAP('J', PHASE_L1, FREQ1); \
   MAP('J', PHASE_L2, FREQ2); \
-  MAP('J', PHASE_L5, FREQ5); \
-  MAP('J', PHASE_L6, FREQ6);
+  MAP('J', PHASE_L5, FREQ5);
 
 // Phase options string to phase channel maps
 #define PHASE_CHANNEL_TO_STR_MAPS \
@@ -315,5 +310,4 @@
   MAP('C', PHASE_B3A, "B3A"); \
   MAP('J', PHASE_L1, "L1"); \
   MAP('J', PHASE_L2, "L2"); \
-  MAP('J', PHASE_L5, "L5"); \
-  MAP('J', PHASE_L6, "L6");
+  MAP('J', PHASE_L5, "L5");

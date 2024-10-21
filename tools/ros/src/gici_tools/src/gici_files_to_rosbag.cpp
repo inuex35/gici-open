@@ -87,7 +87,7 @@ void writeRosbag(const std::shared_ptr<DataCluster> data_cluster,
         int week = 0;
         o.tow = time2gpst(obs->time, &week);
         o.week = week;
-        char prn_buf[5];
+        char prn_buf[6];
         satno2id(obs->sat, prn_buf);
         o.prn = prn_buf;
         const char system = o.prn[0];

@@ -408,6 +408,9 @@ void GnssDataIntegration::updateTgd()
       if (eph->tgd[0] != 0.0) {
         code_bias_local_->setTgdIsc(prn, TgdIscType::QzssTgdL1L6, eph->tgd[0]);
       }
+      if (eph->tgd[1] != 0.0) {
+        code_bias_local_->setTgdIsc(prn, TgdIscType::QzssTgdL1L6, eph->tgd[1]);
+      }
     }
     else if (prn[0] == 'E') {
       if (eph->tgd[0] != 0.0) {

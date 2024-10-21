@@ -328,7 +328,6 @@ void CodeBias::arrangeToBases()
 
   // Arrange to code biases
   arrange();
-
   mutex_.unlock();
 
   biases_initialized_ = true;
@@ -488,11 +487,6 @@ void CodeBias::arrangeAllSourceDcbs(
         }
       }
 
-      if (base.first == CODE_L6I || base.first == CODE_L6L || 
-          base.second == CODE_L6I || base.second == CODE_L6L) {
-        LOG(INFO) << "Skipping L6 base code processing for " << prn;
-        continue;
-      }
       if (!found_first) {
         LOG(INFO) << "Input DCBs for " << prn << " does not contain base code " 
           << gnss_common::codeTypeToRinexType(prn[0], base.first) << "!";
@@ -523,7 +517,6 @@ void CodeBias::arrangeAllSourceDcbs(
       }
       biases.at(prn).insert(std::make_pair(codes[i], x(i)));
     }
-
   }
 }
 

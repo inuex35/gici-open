@@ -291,22 +291,22 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   // ambiguity blocks
   addSdAmbiguityParameterBlocks(curGnssRov(), 
     curGnssRef(), phase_index_pairs, curGnssRov().id, curAmbiguityState());
-  addSdAuxAmbiguityParameterBlocks(curGnssHeading(), 
-    curGnssRef(), phase_index_pairs_heading, curGnssHeading().id, curAuxAmbiguityState());
+  //addSdAuxAmbiguityParameterBlocks(curGnssHeading(), 
+  //  curGnssRef(), phase_index_pairs_heading, curGnssHeading().id, curAuxAmbiguityState());
 
   // frequency block
   int num_valid_doppler_system = 0;
   addFrequencyParameterBlocks(curGnssRov(), curGnssRov().id, num_valid_doppler_system);
-  addFrequencyParameterBlocks(curGnssHeading(), curGnssHeading().id, num_valid_doppler_system);
+  //addFrequencyParameterBlocks(curGnssHeading(), curGnssHeading().id, num_valid_doppler_system);
 
   // Add pseudorange residual blocks
   int num_valid_satellite = 0;
   addDdPseudorangeResidualBlocks(curGnssRov(), 
     curGnssRef(), code_index_pairs, states_[index], num_valid_satellite);
-  addDdPseudorangeResidualBlocks(curGnssRov(), 
-    curGnssHeading(), code_index_pairs, states_[index], num_valid_satellite);
-  addDdPseudorangeResidualBlocks(curGnssHeading(), 
-    curGnssRov(), code_index_pairs, states_[index], num_valid_satellite);
+  //addDdPseudorangeResidualBlocks(curGnssRov(), 
+  //  curGnssHeading(), code_index_pairs, states_[index], num_valid_satellite);
+  //addDdPseudorangeResidualBlocks(curGnssHeading(), 
+  //  curGnssRov(), code_index_pairs, states_[index], num_valid_satellite);
 
   // We do not need to check if the number of satellites is sufficient in tightly fusion.
   if (!checkSufficientSatellite(num_valid_satellite, 0)) {
@@ -319,7 +319,7 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
     // erase parameters in current state
     eraseFrequencyParameterBlocks(states_[index]);
     eraseAmbiguityParameterBlocks(curAmbiguityState());
-    eraseAmbiguityParameterBlocks(curAuxAmbiguityState());
+    //eraseAmbiguityParameterBlocks(curAuxAmbiguityState());
     //eraseAmbiguityParameterBlocks(curCompassAmbiguityState());
     eraseImuState(states_[index]);
     return false;
@@ -328,10 +328,10 @@ bool RtkImuCameraRrrEstimator::addTwoGnssMeasurementAndState(
   // Add phaserange residual blocks
   addDdPhaserangeResidualBlocks(
     curGnssRov(), curGnssRef(), phase_index_pairs, states_[index], false);
-  addDdPhaserangeResidualBlocks(
-    curGnssHeading(), curGnssRef(), phase_index_pairs, states_[index], false);
-  addDdPhaserangeResidualBlocks(
-    curGnssHeading(), curGnssRov(), phase_index_pairs, states_[index], true);
+  //addDdPhaserangeResidualBlocks(
+  //  curGnssHeading(), curGnssRef(), phase_index_pairs, states_[index], false);
+  //addDdPhaserangeResidualBlocks(
+  //  curGnssHeading(), curGnssRov(), phase_index_pairs, states_[index], true);
   // Add tdcp residual blocks
   //if (!isFirstEpoch()) {
   //  LOG(INFO) << "TDCP index:" << index;

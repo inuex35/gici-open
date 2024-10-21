@@ -119,7 +119,14 @@ void GnssEstimatorBase::addSdAmbiguityParameterBlocks(
     double code = index_pair.rov.code_type;
     double wavelength = observation.wavelength;
     double phase_id = gnss_common::getPhaseID(system, code);
+    LOG(INFO) << "satellite.getSystem(): " << satellite.getSystem();
+    LOG(INFO) << "satellite.prn: " << satellite.prn;
+    LOG(INFO) << "code: " << code;
+
     BackendId ambiguity_id = createGnssAmbiguityId(satellite.prn, phase_id, id);
+
+    //LOG(INFO) << "ambiguity_id: " << ambiguity_id;
+
     CHECK(!graph_->parameterBlockExists(ambiguity_id.asInteger())) 
       << "Ambiguity parameter for " << satellite.prn << " in phase " 
       << phase_id << " has already been added!";
