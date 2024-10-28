@@ -240,7 +240,14 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
       case SYS_QZS: satellite.prn = 'J'; break;
       default: continue;
     }
-    sprintf(strprnnum, "%02d", prn);
+    if (satellite.prn[0] == 'J')
+    {
+      sprintf(strprnnum, "%02d", prn-193);
+    }
+    else
+    {
+      sprintf(strprnnum, "%02d", prn);
+    }
     satellite.prn.append(strprnnum);
 
     // satellite position and clock
