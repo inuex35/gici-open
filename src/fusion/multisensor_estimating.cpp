@@ -329,6 +329,7 @@ MultiSensorEstimating::MultiSensorEstimating(
     gnss_imu_init_options_.gnss_extrinsics_initial_std = ImuEstimatorBase::rotateImuToBody(
       gnss_imu_init_options_.gnss_extrinsics_initial_std, imu_base_options_);
     CameraBundlePtr camera_bundle = feature_handler_options_.cameras;
+    /*
     for (size_t i = 0; i < camera_bundle->numCameras(); i++) {
       camera_bundle->set_T_C_B(i, ImuEstimatorBase::rotateImuToBody(
         camera_bundle->get_T_C_B(i).inverse(), imu_base_options_).inverse());
@@ -342,6 +343,7 @@ MultiSensorEstimating::MultiSensorEstimating(
       std::dynamic_pointer_cast<VisualEstimatorBase>(estimator_);
     CHECK_NOTNULL(visual_estimator);
     visual_estimator->setFeatureHandler(feature_handler_);
+    */
   }
   else {
     LOG(ERROR) << "Invalid estimator type: " << static_cast<int>(type_);
