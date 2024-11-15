@@ -48,7 +48,7 @@ struct ImuParameters
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   double a_max = 150;  ///< Accelerometer saturation. [m/s^2]
-  double g_max = 7.8;  ///< Gyroscope saturation. [rad/s]
+  double g_max = 20.0;  ///< Gyroscope saturation. [rad/s]
   double sigma_g_c = 1.0e-4;  ///< Gyroscope noise density. [rad/s*1/sqrt(Hz)]
   double sigma_bg = 0.01; // Initial gyroscope bias uncertainty
   ///< Initial gyroscope bias uncertainty. [rad/s*1/sqrt(Hz)]
@@ -59,7 +59,7 @@ struct ImuParameters
   double sigma_aw_c = 8.4e-4; ///< Accelerometer drift noise density. [m/s^3*1/sqrt(Hz)]
   double g = 9.8;  ///< Earth acceleration. [m/s^2]
   ///< Mean of the prior acceleration bias. [m/s^2*1/sqrt(Hz)]
-  double rate = 400;  ///< IMU rate. [Hz].
+  double rate = 100;  ///< IMU rate. [Hz].
   double delay_imu_cam = 0.0;
   ///< Camera-IMU delay: delay_imu_cam = cam_timestamp - imu_timestamp [s]
 };
