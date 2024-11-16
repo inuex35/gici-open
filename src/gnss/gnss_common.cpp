@@ -26,6 +26,7 @@ int systemConvert(char sys)
     case 'R': return SYS_GLO;
     case 'E': return SYS_GAL;
     case 'C': return SYS_CMP;
+    case 'J': return SYS_QZS;
     default: return SYS_NONE;
   }
 }
@@ -38,6 +39,7 @@ char systemConvert(int sys)
     case SYS_GLO: return 'R';
     case SYS_GAL: return 'E';
     case SYS_CMP: return 'C';
+    case SYS_QZS: return 'J';
     default: return 0x00;
   }
 }

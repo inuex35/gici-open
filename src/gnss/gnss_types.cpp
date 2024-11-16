@@ -14,6 +14,6 @@ namespace gici {
 
 // Static variable
 int32_t GnssMeasurement::epoch_cnt_ = 0;
-std::vector<char> gnss_systems{'G', 'R', 'E', 'C'};
+std::vector<char> gnss_systems{'G', 'R', 'E', 'C', 'J'};
 
 }

@@ -32,6 +32,9 @@ void CodeBias::setDefaultBase()
   if (bases_.find('C') == bases_.end()) {
     bases_.insert(std::make_pair('C', std::make_pair(CODE_L6I, CODE_NONE)));
   }
+  if (bases_.find('J') == bases_.end()) {
+    bases_.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_L2L)));
+  }
   mutex_.unlock();
 }
 
@@ -194,6 +197,25 @@ void CodeBias::setDefaultDcbs()
   default_dcbs_.insert(std::make_pair("Cxx", default_dcb));
   default_dcb.code2 = CODE_L6X;
   default_dcbs_.insert(std::make_pair("Cxx", default_dcb));
+
+  // QZSS L1
+  default_dcb.code1 = CODE_L1C;
+  default_dcb.code2 = CODE_L1X;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  default_dcb.code2 = CODE_L1Z;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  // QZSS L2
+  default_dcb.code1 = CODE_L2X;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  // QZSS L5
+  default_dcb.code1 = CODE_L5I;
+  default_dcb.code2 = CODE_L5Q;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+  
+  default_dcb.code1 = CODE_L6I;
+  default_dcb.code2 = CODE_L6Q;
+  default_dcbs_.insert(std::make_pair("Jxx", default_dcb));
+
   mutex_.unlock();
 }
 
@@ -630,6 +652,13 @@ void CodeBias::putTgdsToAllSourceDcbs()
       dcb.code1 = CODE_L7I;
       dcb.code2 = CODE_L6I;
       dcb.value = tgd.value;
+    }
+    else if (tgd.type == TgdIscType::QzsTgd) {
+      dcb.code1 = CODE_L1W;
+      dcb.code2 = CODE_L2W;
+      double f1 = gnss_common::codeToFrequency(prn[0], dcb.code1);
+      double f2 = gnss_common::codeToFrequency(prn[0], dcb.code2);
+      dcb.value = tgd.value * (1 - square(f1 / f2));
     }
     dcb.std = 0.3;
 

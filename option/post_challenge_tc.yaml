@@ -1,0 +1,133 @@
+# You can uncomment the node configuration to publish related topics and observe estimation results (Build GICI in ROS wrapper).
+stream:
+  streamers:
+  - streamer:
+      tag: str_gnss_rov_file
+      type: post-file
+      path: ./precise-positioning-2024/ppc2024/train/tokyo1/rover.obs
+      format:
+        type: gnss-rinex
+  - streamer:
+      tag: str_gnss_ref_file
+      type: post-file
+      path: ./precise-positioning-2024/ppc2024/train/tokyo1/base.obs
+      format:
+        type: gnss-rinex
+  - streamer:
+      tag: str_gnss_eph_file
+      type: post-file
+      path: ./precise-positioning-2024/ppc2024/train/tokyo1/base.nav
+      format:
+        type: gnss-rinex
+      burst_load: true
+  - streamer:
+      tag: str_imu_file
+      type: post-file
+      path: ./precise-positioning-2024/ppc2024/train/tokyo1/imu.bin
+      format:
+        type: imu-pack
+  - streamer:
+      tag: str_tc_solution_file
+      input_tags: [fmt_tc_solution_file]
+      type: file
+      path: ./train_tokyo1.txt
+  - streamer:
+      tag: str_solution_stream
+      input_tags: [fmt_solution_stream]
+      type: tcp-server
+      port: 9001  
+  formators:
+  - formator:
+      io: output
+      tag: fmt_tc_solution_file
+      type: nmea 
+      use_esa: false
+      use_esd: false
+      talker_id: GP
+  - formator:
+      io: output
+      tag: fmt_solution_stream
+      type: nmea 
+      use_esa: true
+      use_esd: true
+      talker_id: GP
+
+  replay:
+    enable: true
+    speed: 1.0
+    start_offset: 0.0
+
+estimate:
+- estimator:
+    tag: est_rtk_imu_tc
+    type: rtk_imu_tc
+    input_tags: [str_gnss_rov_file, str_gnss_ref_file, str_gnss_eph_file, str_imu_file]
+    str_gnss_rov_file_roles: [rover]
+    str_gnss_ref_file_roles: [reference]
+    str_gnss_eph_file_roles: [ephemeris]
+    str_imu_file_roles: [major]
+    output_tags: [fmt_tc_solution_file, fmt_solution_stream]
+    output_align_tag: str_gnss_rov_file
+    output_downsample_rate: 1
+    compute_covariance: true        
+    enable_input_align: false
+    input_align_latency: 0.0
+    pending_num_threshold: 5
+    rtk_imu_tc_options:
+      max_window_length: 10
+    rtk_options:
+      use_ambiguity_resolution: true
+    gnss_estimator_base_options:
+      use_outlier_rejection: true
+      reject_one_outlier_once: false
+      max_pesudorange_error: 2.5          
+      max_phaserange_error: 0.06         
+      max_doppler_error: 0.5
+      gnss_common:
+        min_elevation: 20.0
+        min_SNR: [35.0, 30.0]
+        system_exclude: []
+        code_exclude: []
+    imu_estimator_base_options:
+      imu_parameters:
+        a_max: 15.0
+        g_max: 30.0
+        sigma_bg: 1.0
+        sigma_ba: 1.0
+        sigma_g_c: 0.5
+        sigma_a_c: 0.5
+        sigma_gw_c: 2.0881e-02
+        sigma_aw_c: 2.7361e-01
+      body_to_imu_rotation: [0.0, 0.0, -90.0]
+      body_to_imu_rotation_std: 1.0
+      car_motion: true
+      car_motion_min_velocity: 3.0
+      car_motion_max_anguler_velocity: 5.0
+    estimator_base_options:
+      max_iteration: 5
+      num_threads: 4
+      max_solver_time: 0.03
+      verbose_output: true
+      solver_type: dense_schur
+      trust_region_strategy_type: dogleg
+    ambiguity_resolution_options:
+      system_exclude: [R]
+      min_percentage_fixation_uwl: 1.0
+      min_percentage_fixation_wl: 0.9
+      min_percentage_fixation_nl: 0.9
+      ratio: 2.0
+    gnss_imu_initializer_options:
+      max_iteration: 30
+      num_threads: 4
+      max_solver_time: 0.5
+      gnss_extrinsics: [0.0, 0.31, -0.55]
+      gnss_extrinsics_initial_std: [0.05, 0.05, 0.05]
+      time_window_length_slow_motion: 0.05
+      time_window_length_dynamic_motion: 0.5
+      min_acceleration: 0.5
+      
+logging:
+  enable: true
+  min_log_level: 0
+  log_to_stderr: true
+  file_directory: ./log

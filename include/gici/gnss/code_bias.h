@@ -21,6 +21,7 @@ namespace gici {
 enum class TgdIscType {
   None,
   GpsTgd,
+  QzsTgd,
   GlonassTgd,
   GalileoBgdE1E5a,
   GalileoBgdE1E5b,

@@ -82,7 +82,11 @@ void GnssEstimatorBase::addClockParameterBlocks(
   // Add clock parameter for each system
   for (size_t i = 0; i < getGnssSystemList().size(); i++) 
   {
-    const char system = getGnssSystemList()[i];
+    char system = getGnssSystemList()[i];
+    if(system == 'J')
+    {
+      system = 'G';
+    }
     BackendId clock_id = createGnssClockId(system, id);
     if (gnss_common::useSystem(gnss_base_options_.common, system) && 
         !graph_->parameterBlockExists(clock_id.asInteger())) 
@@ -166,7 +170,7 @@ void GnssEstimatorBase::addClockParameterBlocks(
       num_valid_system++;
       continue;
     }
-
+    if(system == 'J') system = 'G'; 
     BackendId clock_id = createGnssClockId(system, id);
     Eigen::VectorXd measurement = Eigen::VectorXd::Zero(1);
     Eigen::MatrixXd information = Eigen::MatrixXd::Identity(1, 1) * 1.0e-6;
@@ -314,7 +318,7 @@ void GnssEstimatorBase::addFrequencyParameterBlocks(
         GnssMeasurementIndex(satellite.prn, obs.first), true)) continue;
 
       // check single frequency
-      if (use_single_frequency) {
+      if (false) {
         CodeBias::BaseFrequencies bases = measurement.code_bias->getBase();
         std::pair<int, int> base_pair = bases.at(system);
         if (system == 'C') base_pair.first = CODE_L2I;  // use B1I for BDS
@@ -953,7 +957,7 @@ void GnssEstimatorBase::addDopplerResidualBlocks(
         GnssMeasurementIndex(satellite.prn, obs.first), true)) continue;
       
       // check single frequency
-      if (use_single_frequency) {
+      if (false) {
         CodeBias::BaseFrequencies bases = measurement.code_bias->getBase();
         std::pair<int, int> base_pair = bases.at(system);
         if (system == 'C') base_pair.first = CODE_L2I;  // use B1I for BDS
@@ -2041,7 +2045,11 @@ void GnssEstimatorBase::addClockMarginBlocksWithResiduals(const State& state, bo
   const BackendId& parameter_id = state.id;
   for (size_t i = 0; i < getGnssSystemList().size(); i++) 
   {
-    const char system = getGnssSystemList()[i];
+    char system = getGnssSystemList()[i];
+    if(system == 'J')
+    {
+      system = 'G';
+    }
     BackendId clock_id = changeIdType(parameter_id, IdType::gClock, system);
     if (graph_->parameterBlockExists(clock_id.asInteger())) {
       Graph::ResidualBlockCollection residuals = 

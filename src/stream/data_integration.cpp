@@ -96,6 +96,7 @@ void GnssDataIntegration::init()
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L2I, CODE_L6I)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1W, CODE_L2W)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // broadcast ephemeris base
@@ -105,6 +106,7 @@ void GnssDataIntegration::init()
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L6I, CODE_NONE)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1W, CODE_L2W)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // phase bias handle
@@ -256,9 +258,18 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
       case SYS_GLO: satellite.prn = 'R'; break;
       case SYS_GAL: satellite.prn = 'E'; break;
       case SYS_CMP: satellite.prn = 'C'; break;
+      case SYS_QZS: satellite.prn = 'J'; break;
       default: continue;
     }
-    sprintf(strprnnum, "%02d", prn);
+
+    if (satellite.prn[0] == 'J')
+    {
+      sprintf(strprnnum, "%02d", prn-193);
+    }
+    else
+    {
+      sprintf(strprnnum, "%02d", prn);
+    }
     satellite.prn.append(strprnnum);
 
     // satellite position and clock
@@ -320,7 +331,7 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
     LOG(INFO) << "Waiting for ephemeris. We still have " << num_invalid_ephemeris
       << " satellites that do not have ephemeris. Total number of satellite is "
       << num_invalid_ephemeris + num_valid_ephemeris;
-    return;
+      //return;
   }
 
   // reference station position
@@ -438,6 +449,11 @@ void GnssDataIntegration::updateTgd()
       }
       if (eph->tgd[1] != 0.0) {
         code_bias_local_->setTgdIsc(prn, TgdIscType::BdsTgdB2B3, eph->tgd[1]);
+      }
+    }
+    else if (prn[0] == 'J') {
+      if (eph->tgd[0] != 0.0) {
+        code_bias_local_->setTgdIsc(prn, TgdIscType::GpsTgd, eph->tgd[0]);
       }
     }
   }

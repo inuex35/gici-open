@@ -450,6 +450,7 @@ void loadOptions<GnssErrorParameter>(
     options.system_error_ratio.at('R') = system_error_ratio[1];
     options.system_error_ratio.at('E') = system_error_ratio[2];
     options.system_error_ratio.at('C') = system_error_ratio[3];
+    options.system_error_ratio.at('J') = system_error_ratio[4];
   }
   else {
     LOG(INFO) << "Unable to load system_error_ratio. Using default instead.";
