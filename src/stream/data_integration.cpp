@@ -96,7 +96,7 @@ void GnssDataIntegration::init()
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L2I, CODE_L6I)));
-    bases.insert(std::make_pair('J', std::make_pair(CODE_L1W, CODE_L2W)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_L2C)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // broadcast ephemeris base
@@ -106,7 +106,7 @@ void GnssDataIntegration::init()
     bases.insert(std::make_pair('R', std::make_pair(CODE_L1P, CODE_L2P)));
     bases.insert(std::make_pair('E', std::make_pair(CODE_L1C, CODE_L5Q)));
     bases.insert(std::make_pair('C', std::make_pair(CODE_L6I, CODE_NONE)));
-    bases.insert(std::make_pair('J', std::make_pair(CODE_L1W, CODE_L2W)));
+    bases.insert(std::make_pair('J', std::make_pair(CODE_L1C, CODE_NONE)));
     code_bias_local_ = std::make_shared<CodeBias>(bases);
   }
   // phase bias handle
@@ -264,7 +264,7 @@ void GnssDataIntegration::handleGNSS(const std::string& formator_tag,
 
     if (satellite.prn[0] == 'J')
     {
-      sprintf(strprnnum, "%02d", prn-193);
+      sprintf(strprnnum, "%02d", prn-192);
     }
     else
     {

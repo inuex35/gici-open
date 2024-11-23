@@ -4,33 +4,33 @@ stream:
   - streamer:
       tag: str_gnss_rov_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/rover.obs
+      path: ./precise-positioning-2024/ppc2024/test/tokyo2/rover.obs
       format:
         type: gnss-rinex
   - streamer:
       tag: str_gnss_ref_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/base.obs
+      path: ./precise-positioning-2024/ppc2024/test/tokyo2/base.obs
       format:
         type: gnss-rinex
   - streamer:
       tag: str_gnss_eph_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/base.nav
+      path: ./precise-positioning-2024/ppc2024/test/tokyo2/base.nav
       format:
         type: gnss-rinex
       burst_load: true
   - streamer:
       tag: str_imu_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/imu.bin
+      path: ./precise-positioning-2024/ppc2024/test/tokyo2/imu.bin
       format:
         type: imu-pack
   - streamer:
       tag: str_tc_solution_file
       input_tags: [fmt_tc_solution_file]
       type: file
-      path: ./train_nagoya1.txt
+      path: ./test_tokyo2.txt
   - streamer:
       tag: str_solution_stream
       input_tags: [fmt_solution_stream]
@@ -80,20 +80,20 @@ estimate:
     gnss_estimator_base_options:
       use_outlier_rejection: true
       reject_one_outlier_once: false
-      max_pesudorange_error: 2.5          
+      max_pesudorange_error: 2.5
       max_phaserange_error: 0.06
       max_doppler_error: 0.5
       gnss_common:
-        min_elevation: 15.0
+        min_elevation: 10.0
         min_SNR: [35.0, 35.0]
-        system_exclude: []
+        system_exclude: [Q]
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
         a_max: 150.0
         g_max: 20.0
+        sigma_ba: 1.0
         sigma_ba: 3.0
-        sigma_bg: 1.0
         sigma_g_c: 0.25
         sigma_a_c: 0.5
         sigma_gw_c: 3.0e-02
@@ -105,7 +105,7 @@ estimate:
       car_motion_max_anguler_velocity: 5.0
       use_zupt: true
       zupt_max_acc_std: 0.5
-      zupt_max_gyro_std: 0.5
+      zupt_max_gyro_std: 0.3
       zupt_max_gyro_median: 0.5
       zupt_sigma_zero_velocity: 0.5
     estimator_base_options:
@@ -125,7 +125,7 @@ estimate:
       max_iteration: 30
       num_threads: 4
       max_solver_time: 0.5
-      gnss_extrinsics: [-0.670, 0.593, -1.216]
+      gnss_extrinsics: [0.0, 0.33, -0.55]
       gnss_extrinsics_initial_std: [0.05, 0.05, 0.05]
       time_window_length_slow_motion: 0.05
       time_window_length_dynamic_motion: 0.5

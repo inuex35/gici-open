@@ -4,33 +4,33 @@ stream:
   - streamer:
       tag: str_gnss_rov_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/rover.obs
+      path: ./precise-positioning-2024/ppc2024/test/nagoya3/rover.obs
       format:
         type: gnss-rinex
   - streamer:
       tag: str_gnss_ref_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/base.obs
+      path: ./precise-positioning-2024/ppc2024/test/nagoya3/base.obs
       format:
         type: gnss-rinex
   - streamer:
       tag: str_gnss_eph_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/base.nav
+      path: ./precise-positioning-2024/ppc2024/test/nagoya3/base.nav
       format:
         type: gnss-rinex
       burst_load: true
   - streamer:
       tag: str_imu_file
       type: post-file
-      path: ./precise-positioning-2024/ppc2024/train/nagoya1/imu.bin
+      path: ./precise-positioning-2024/ppc2024/test/nagoya3/imu.bin
       format:
         type: imu-pack
   - streamer:
       tag: str_tc_solution_file
       input_tags: [fmt_tc_solution_file]
       type: file
-      path: ./train_nagoya1.txt
+      path: ./test_nagoya3.txt
   - streamer:
       tag: str_solution_stream
       input_tags: [fmt_solution_stream]
@@ -84,9 +84,9 @@ estimate:
       max_phaserange_error: 0.06
       max_doppler_error: 0.5
       gnss_common:
-        min_elevation: 15.0
+        min_elevation: 10.0
         min_SNR: [35.0, 35.0]
-        system_exclude: []
+        system_exclude: [Q]
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
