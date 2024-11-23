@@ -30,7 +30,7 @@ stream:
       tag: str_tc_solution_file
       input_tags: [fmt_tc_solution_file]
       type: file
-      path: ./test_tokyo1_min_elevation10_cp3.txt
+      path: ./test_tokyo1.txt
   - streamer:
       tag: str_solution_stream
       input_tags: [fmt_solution_stream]
@@ -81,12 +81,12 @@ estimate:
       use_outlier_rejection: true
       reject_one_outlier_once: false
       max_pesudorange_error: 2.5
-      max_phaserange_error: 0.03
+      max_phaserange_error: 0.06
       max_doppler_error: 0.5
       gnss_common:
         min_elevation: 10.0
         min_SNR: [35.0, 35.0]
-        system_exclude: []
+        system_exclude: [Q]
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
