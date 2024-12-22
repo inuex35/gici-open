@@ -6,72 +6,46 @@ stream:
         tag: str_gnss_rov
         output_tags: [fmt_gnss_rov]
         type: file
-        path: <data-directory>/gnss_rover.bin
+        path: ./precise-positioning-2024/ppc2024/test/tokyo3/rover.obs
+        enable_time_tag: false
+
     - streamer:
         tag: str_gnss_ref
         output_tags: [fmt_gnss_ref]
         type: file
-        path: <data-directory>/gnss_reference.bin
+        path: ./precise-positioning-2024/ppc2024/test/tokyo3/base.obs
+        enable_time_tag: false
+
     - streamer:
         tag: str_gnss_eph
         output_tags: [fmt_gnss_eph]
         type: file
-        path: <data-directory>/gnss_ephemeris.bin
-    - streamer:
-        tag: str_dcb_file
-        output_tags: [fmt_dcb_file]
-        type: file
-        path: <gici-root-directory>/option/CAS0MGXRAP_20221580000_01D_01D_DCB.BSX
+        path: ./precise-positioning-2024/ppc2024/test/tokyo3/base.nav
         enable_time_tag: false
+
     - streamer:
         tag: str_rtk_solution_file
         input_tags: [fmt_rtk_solution_file]
         type: file
-        path: <output-directory>/rtk_solution.txt
+        path: ./g_test_tokyo3.txt
         enable_time_tag: false
-    # - streamer:
-    #     tag: str_solution
-    #     type: ros
-    #     topic_name: solution
-    #     queue_size: 5
-    #     io: output
-    #     format: pose_stamped
-    # - streamer:
-    #     tag: str_solution_odometry
-    #     type: ros
-    #     topic_name: solution_odometry
-    #     queue_size: 10
-    #     io: output
-    #     format: odometry
-    #     subframe_id: Body
-    # - streamer:
-    #     tag: str_solution_path
-    #     type: ros
-    #     topic_name: solution_path
-    #     queue_size: 100
-    #     io: output
-    #     format: path
   
   formators:
     - formator:
         io: input
-        tag: fmt_dcb_file
-        type: dcb-file
-    - formator:
-        io: input
         tag: fmt_gnss_rov
-        type: gnss-raw
-        sub_type: tersus
+        type: gnss-rinex
+        sub_type: rinex
     - formator:
         io: input
         tag: fmt_gnss_ref
-        type: gnss-rtcm-3
-        start_time: 2023.03.20
+        type: gnss-rinex
+        sub_type: rinex
     - formator:
         io: input
         tag: fmt_gnss_eph
-        type: gnss-rtcm-3
-        start_time: 2023.03.20
+        type: gnss-rinex
+        sub_type: rinex
     - formator:
         io: output
         tag: fmt_rtk_solution_file
@@ -90,11 +64,10 @@ estimate:
 - estimator:
     tag: est_rtk
     type: rtk
-    input_tags: [fmt_gnss_rov, fmt_gnss_ref, fmt_gnss_eph, fmt_dcb_file]
+    input_tags: [fmt_gnss_rov, fmt_gnss_ref, fmt_gnss_eph]
     fmt_gnss_rov_roles: [rover]
     fmt_gnss_ref_roles: [reference]
     fmt_gnss_eph_roles: [ephemeris]
-    fmt_dcb_file_roles: [code_bias]
     output_tags: [fmt_rtk_solution_file]
     # output_tags: [fmt_rtk_solution_file, str_solution, str_solution_odometry, str_solution_path]
     output_align_tag: fmt_gnss_rov

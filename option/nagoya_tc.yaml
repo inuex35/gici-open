@@ -90,7 +90,7 @@ estimate:
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
-        a_max: 150.0
+        a_max: 15.0
         g_max: 20.0
         sigma_ba: 3.0
         sigma_bg: 1.0

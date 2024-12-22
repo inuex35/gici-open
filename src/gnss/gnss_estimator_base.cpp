@@ -313,7 +313,7 @@ void GnssEstimatorBase::addFrequencyParameterBlocks(
         GnssMeasurementIndex(satellite.prn, obs.first), true)) continue;
 
       // check single frequency
-      if (false) {
+      if (use_single_frequency) {
         CodeBias::BaseFrequencies bases = measurement.code_bias->getBase();
         std::pair<int, int> base_pair = bases.at(system);
         if (system == 'C') base_pair.first = CODE_L2I;  // use B1I for BDS
@@ -952,7 +952,7 @@ void GnssEstimatorBase::addDopplerResidualBlocks(
         GnssMeasurementIndex(satellite.prn, obs.first), true)) continue;
       
       // check single frequency
-      if (false) {
+      if (use_single_frequency) {
         CodeBias::BaseFrequencies bases = measurement.code_bias->getBase();
         std::pair<int, int> base_pair = bases.at(system);
         if (system == 'C') base_pair.first = CODE_L2I;  // use B1I for BDS

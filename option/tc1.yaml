@@ -74,7 +74,7 @@ estimate:
     input_align_latency: 0.0
     pending_num_threshold: 5
     rtk_imu_tc_options:
-      max_window_length: 3
+      max_window_length: 4
     rtk_options:
       use_ambiguity_resolution: true
     gnss_estimator_base_options:
@@ -86,14 +86,14 @@ estimate:
       gnss_common:
         min_elevation: 10.0
         min_SNR: [35.0, 35.0]
-        system_exclude: [Q]
+        system_exclude: []
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
         a_max: 150.0
         g_max: 20.0
-        sigma_ba: 1.0
         sigma_ba: 3.0
+        sigma_bg: 1.0
         sigma_g_c: 0.25
         sigma_a_c: 0.5
         sigma_gw_c: 3.0e-02
@@ -105,7 +105,7 @@ estimate:
       car_motion_max_anguler_velocity: 5.0
       use_zupt: true
       zupt_max_acc_std: 0.5
-      zupt_max_gyro_std: 0.3
+      zupt_max_gyro_std: 0.5
       zupt_max_gyro_median: 0.5
       zupt_sigma_zero_velocity: 0.5
     estimator_base_options:
@@ -120,7 +120,7 @@ estimate:
       min_percentage_fixation_uwl: 1.0
       min_percentage_fixation_wl: 0.9
       min_percentage_fixation_nl: 0.9
-      ratio: 2.0
+      ratio: 3.0
     gnss_imu_initializer_options:
       max_iteration: 30
       num_threads: 4

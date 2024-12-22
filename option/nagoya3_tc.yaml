@@ -86,7 +86,7 @@ estimate:
       gnss_common:
         min_elevation: 10.0
         min_SNR: [35.0, 35.0]
-        system_exclude: [Q]
+        system_exclude: []
         code_exclude: []
     imu_estimator_base_options:
       imu_parameters:
@@ -120,7 +120,7 @@ estimate:
       min_percentage_fixation_uwl: 1.0
       min_percentage_fixation_wl: 0.9
       min_percentage_fixation_nl: 0.9
-      ratio: 2.0
+      ratio: 3.0
     gnss_imu_initializer_options:
       max_iteration: 30
       num_threads: 4
