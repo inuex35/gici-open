@@ -109,7 +109,7 @@ GICI-LIBを実行するには以下のコマンドを使用してください。
 
 高精度測位チャレンジ用データセットは以下からダウンロード可能です。
 
-[GICI-dataset]([https://github.com/chichengcn/gici-open-dataset.git](https://www.kaggle.com/competitions/precise-positioning-2024))
+[Precise Positioning 2024 - Kaggle Competition](https://www.kaggle.com/competitions/precise-positioning-2024)
 
 ---
 
