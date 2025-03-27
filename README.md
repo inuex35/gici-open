@@ -168,9 +168,19 @@ docker run -v /path/to/dataset:/data gici-lib ./option/nagoya1_tc.yaml
 
 公開されたイメージを利用する場合：
 
+#### Ubuntu環境の場合
+
 ```bash
 # イメージをプル
 docker pull ghcr.io/inuex35/gici-open:latest
 
-# コンテナ内でbashシェルを起動
-docker run -it -v /path/to/dataset:/data ghcr.io/inuex35/gici-open:latest /bin/bash
+# カレントディレクトリのデータセットをマウントしてbashシェルを起動
+docker run -it -v $(pwd)/dataset:/app/dataset ghcr.io/inuex35/gici-open:latest /bin/bash
+
+#### Windows PowerShell環境の場合
+# イメージをプル
+docker pull ghcr.io/inuex35/gici-open:latest
+
+# カレントディレクトリのデータセットをマウントしてbashシェルを起動
+docker run -it -v ${PWD}/dataset:/app/dataset ghcr.io/inuex35/gici-open:latest /bin/bash
+/app/build/gici_main ./option/tc1.yaml
