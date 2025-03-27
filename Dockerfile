@@ -33,7 +33,6 @@ RUN git clone https://github.com/google/glog.git /opt/glog && \
 
 # Install Ceres Solver
 RUN apt-get update && apt-get install -y \
-    libgoogle-glog-dev \
     libgflags-dev \
     libatlas-base-dev \
     libsuitesparse-dev \
