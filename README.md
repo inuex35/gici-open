@@ -146,20 +146,6 @@ docker build -t gici-lib .
 
 ビルドには環境によって10〜20分程度かかることがあります。
 
-### 8.2 Dockerコンテナの実行
-
-東京データセットの場合：
-
-```bash
-docker run -v /path/to/dataset:/data gici-lib ./option/tc1.yaml
-```
-
-名古屋データセットの場合：
-
-```bash
-docker run -v /path/to/dataset:/data gici-lib ./option/nagoya1_tc.yaml
-```
-
 注意：`/path/to/dataset`は実際のデータセットのパスに置き換えてください。
 
 ### 8.3 GitHub Actions によるビルド
@@ -171,16 +157,12 @@ docker run -v /path/to/dataset:/data gici-lib ./option/nagoya1_tc.yaml
 #### Ubuntu環境の場合
 
 ```bash
-# イメージをプル
-docker pull ghcr.io/inuex35/gici-open:latest
-
 # カレントディレクトリのデータセットをマウントしてbashシェルを起動
-docker run -it -v $(pwd)/dataset:/app/dataset ghcr.io/inuex35/gici-open:latest /bin/bash
+docker run -it --rm -v ${pwd}:/app -w /app gici-lib /bin/bash
+```
 
 #### Windows PowerShell環境の場合
-# イメージをプル
-docker pull ghcr.io/inuex35/gici-open:latest
-
+```
 # カレントディレクトリのデータセットをマウントしてbashシェルを起動
-docker run -it --rm -v ${PWD}:/app -w /app gici-dev /bin/bash
-/app/build/gici_main ./option/tc1.yaml
+docker run -it --rm -v ${PWD}:/app -w /app gici-lib /bin/bash
+```
