@@ -129,3 +129,48 @@ RTKLIBで可視化ができるのでconfig内のポートに接続してくだ�
 ## 7. ライセンス
 
 GICI-LIBは[GPL v3](https://www.gnu.org/licenses/gpl-3.0.html)のもとで配布されています。改変および配布は自由ですが、GPL v3の条件を満たす必要があります。
+
+---
+
+## 8. Docker による実行方法
+
+GICI-LIBはDockerを使用して簡単に実行することができます。環境構築の手間を省き、どのプラットフォームでも同じ結果を得ることができます。
+
+### 8.1 Dockerイメージのビルド
+
+リポジトリをクローンした後、以下のコマンドでDockerイメージをビルドします：
+
+```bash
+docker build -t gici-lib .
+```
+
+ビルドには環境によって10〜20分程度かかることがあります。
+
+### 8.2 Dockerコンテナの実行
+
+東京データセットの場合：
+
+```bash
+docker run -v /path/to/dataset:/data gici-lib ./option/tc1.yaml
+```
+
+名古屋データセットの場合：
+
+```bash
+docker run -v /path/to/dataset:/data gici-lib ./option/nagoya1_tc.yaml
+```
+
+注意：`/path/to/dataset`は実際のデータセットのパスに置き換えてください。
+
+### 8.3 GitHub Actions によるビルド
+
+このリポジトリにはGitHub Actionsの設定ファイル（`.github/workflows/docker-build.yml`）が含まれています。`forppc2024`または`main`ブランチへのプッシュ時に自動的にDockerイメージがビルドされ、GitHub Container Registryに公開されます。
+
+公開されたイメージを利用する場合：
+
+```bash
+docker pull ghcr.io/inuex35/gici-open:latest
+docker run -v /path/to/dataset:/data ghcr.io/inuex35/gici-open:latest ./option/tc1.yaml
+```
+
+これにより、ローカルでのビルド作業を省略できます。
