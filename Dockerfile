@@ -41,8 +41,10 @@ RUN git clone https://github.com/ceres-solver/ceres-solver.git /opt/ceres-solver
 # Create app directory
 WORKDIR /app
 
-# Copy source code
-COPY . .
+# Clone GICI-LIB repository
+RUN git clone https://github.com/inuex35/gici-open.git . && \
+    git checkout forppc2024 && \
+    git submodule update --init --recursive
 
 # Build GICI-LIB
 RUN mkdir -p build && \
