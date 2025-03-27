@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
+    python3-pip \
     libopencv-dev \
     libeigen3-dev \
     libyaml-cpp-dev \
@@ -46,6 +47,8 @@ RUN git clone https://github.com/ceres-solver/ceres-solver.git /opt/ceres-solver
     make -j$(nproc) && \
     make install && \
     ldconfig
+
+RUN pip install pandas gps_time
 
 # Create app directory
 WORKDIR /app
