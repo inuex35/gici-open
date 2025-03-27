@@ -169,8 +169,8 @@ docker run -v /path/to/dataset:/data gici-lib ./option/nagoya1_tc.yaml
 公開されたイメージを利用する場合：
 
 ```bash
+# イメージをプル
 docker pull ghcr.io/inuex35/gici-open:latest
-docker run -v /path/to/dataset:/data ghcr.io/inuex35/gici-open:latest ./option/tc1.yaml
-```
 
-これにより、ローカルでのビルド作業を省略できます。
+# コンテナ内でbashシェルを起動
+docker run -it -v /path/to/dataset:/data ghcr.io/inuex35/gici-open:latest /bin/bash
