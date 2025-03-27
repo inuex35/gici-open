@@ -47,7 +47,7 @@ RUN git clone https://github.com/ceres-solver/ceres-solver.git /opt/ceres-solver
     make install && \
     ldconfig
 
-RUN apt update && apt install python3-pip && pip install pandas gps_time
+RUN apt update && apt install python3-pip -y && pip install pandas gps_time
 
 # Create app directory
 WORKDIR /app
