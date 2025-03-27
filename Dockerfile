@@ -16,15 +16,23 @@ RUN apt-get update && apt-get install -y \
     libopencv-dev \
     libeigen3-dev \
     libyaml-cpp-dev \
-    libgoogle-glog-dev \
     libgflags-dev \
     libatlas-base-dev \
     libsuitesparse-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install Glog from source to ensure CMake config files are available
+RUN git clone https://github.com/google/glog.git /opt/glog && \
+    cd /opt/glog && \
+    git checkout v0.6.0 && \
+    mkdir build && cd build && \
+    cmake .. -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=OFF && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
 # Install Ceres Solver
 RUN apt-get update && apt-get install -y \
-    libgoogle-glog-dev \
     libgflags-dev \
     libatlas-base-dev \
     libsuitesparse-dev \
@@ -36,20 +44,12 @@ RUN git clone https://github.com/ceres-solver/ceres-solver.git /opt/ceres-solver
     mkdir build && cd build && \
     cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF && \
     make -j$(nproc) && \
-    make install
+    make install && \
+    ldconfig
+
+RUN apt update && apt install python3-pip -y && pip install pandas gps_time
 
 # Create app directory
 WORKDIR /app
 
-# Copy source code
-COPY . .
-
-# Build GICI-LIB
-RUN mkdir -p build && \
-    cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc)
-
-# Set the entrypoint
-ENTRYPOINT ["/app/build/gici_main"]
-CMD ["./option/tc.yaml"]
+CMD ["/bin/bash"]
