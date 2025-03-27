@@ -182,7 +182,5 @@ docker run -it -v $(pwd)/dataset:/app/dataset ghcr.io/inuex35/gici-open:latest /
 docker pull ghcr.io/inuex35/gici-open:latest
 
 # カレントディレクトリのデータセットをマウントしてbashシェルを起動
-docker run -it --rm \
-  -v ${PWD}:/app \
-  -w /app \
-  gici-dev /bin/bash/app/build/gici_main ./option/tc1.yaml
+docker run -it --rm -v ${PWD}:/app -w /app gici-dev /bin/bash
+/app/build/gici_main ./option/tc1.yaml
