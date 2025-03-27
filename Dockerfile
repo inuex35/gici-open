@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
-    python3-pip \
     libopencv-dev \
     libeigen3-dev \
     libyaml-cpp-dev \
@@ -53,17 +52,4 @@ RUN pip install pandas gps_time
 # Create app directory
 WORKDIR /app
 
-# Copy source code
-COPY . .
-
-# Build GICI-LIB
-RUN mkdir -p build && \
-    cd build && \
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_PREFIX_PATH="/usr/local" && \
-    make -j$(nproc)
-
-# Set the entrypoint
-ENTRYPOINT ["/app/build/gici_main"]
-CMD ["./option/tc.yaml"]
+CMD ["/bin/bash"]
