@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     libopencv-dev \
     libeigen3-dev \
     libyaml-cpp-dev \
-    libgoogle-glog-dev \
     libgflags-dev \
     libatlas-base-dev \
     libsuitesparse-dev \
@@ -58,7 +57,9 @@ COPY . .
 # Build GICI-LIB
 RUN mkdir -p build && \
     cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="/usr/local" && \
     make -j$(nproc)
 
 # Set the entrypoint
